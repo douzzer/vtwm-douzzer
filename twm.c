@@ -77,6 +77,8 @@ Window ResizeWindow;		/* the window we are resizing */
 int MultiScreen = TRUE;		/* try for more than one screen? */
 int NumScreens;			/* number of screens in ScreenList */
 int NumButtons;			/* number of mouse buttons */
+volatile int IsDone = 0;	/* Have we received an out-of-band request for termination? */
+volatile int ReqWakeup = 0;	/* Are we in a position to need a wakeup from X? */
 int HasShape;			/* server supports shape extension? */
 int ShapeEventBase, ShapeErrorBase;
 
@@ -95,7 +97,6 @@ static int CatchRedirectError(Display * dpy, XErrorEvent * event);	/* for settti
 static int TwmErrorHandler(Display * dpy, XErrorEvent * event);	/* for everything else */
 static void InitVariables(void);
 static void InternUsefulAtoms(void);
-static SIGNAL_T QueueRestartVtwm(int);
 
 
 char Info[INFO_LINES][INFO_SIZE];	/* info strings to print */
@@ -1521,6 +1522,7 @@ delete_pidfile(void)
 /*
  * Exit handlers. Clean up and exit VTWM.
  *
+ *    SigDone()
  *    PlaySoundDone()
  *    Done()
  *    QueueRestartVtwm()
@@ -1529,8 +1531,22 @@ delete_pidfile(void)
 #ifdef SOUND_SUPPORT
 
 SIGNAL_T
-PlaySoundDone(int val)
+PlaySoundDone(int signum)
 {
+  if (signum)
+  {
+    IsDone = 1;
+    if (ReqWakeup > 0)
+    {
+      /*
+       * OK, this is a base lie, but a convenient one since it will
+       * return from X
+       */
+      QueueRestartVtwm(0);
+    }
+    return;
+  }
+
   if (PlaySound(S_STOP))
   {
     if (!Scr)
@@ -1576,6 +1592,20 @@ Done(int signum)
 SIGNAL_T
 Done(int signum)
 {
+  if (signum)
+  {
+    IsDone = 1;
+    if (ReqWakeup > 0)
+    {
+      /*
+       * OK, this is a base lie, but a convenient one since it will
+       * return from X
+       */
+      QueueRestartVtwm(0);
+    }
+    return;
+  }
+
   if (!Scr)
     Scr = ScreenList[0];
 
@@ -1595,6 +1625,20 @@ SIGNAL_T
 QueueRestartVtwm(int signum)
 {
   XClientMessageEvent ev;
+
+  if (ReqWakeup < 1)
+  {
+    /*
+     * We are doing some vtwm thing right now,
+     * so just mark that we want to restart
+     *
+     * Yes, this is still a race condition, but a
+     * much tighter one than before.
+     */
+    ReqWakeup = -1;
+    return;
+  }
+
 
   delete_pidfile();
 

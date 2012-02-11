@@ -451,8 +451,10 @@ extern void free();
 extern SIGNAL_T PlaySoundDone(int);
 extern SIGNAL_T HandleChildExit();
 void Done(int);
+extern SIGNAL_T QueueRestartVtwm(int);
 #else
 extern SIGNAL_T Done(int);
+extern SIGNAL_T QueueRestartVtwm(int);
 #endif
 
 
@@ -467,6 +469,8 @@ extern int HasXrandr;		/* this server supports XRANDR extension */
 
 extern int PreviousScreen;
 extern int NumButtons;
+extern volatile int IsDone;
+extern volatile int ReqWakeup;
 
 extern Cursor UpperLeftCursor;
 extern Cursor RightButt;

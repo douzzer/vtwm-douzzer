@@ -398,7 +398,19 @@ HandleEvents(void)
       InstallWindowColormaps(ColormapNotify, (TwmWindow *) NULL);
     }
     WindowMoved = FALSE;
+
+    if (ReqWakeup < 0)
+      QueueRestartVtwm(0);
+    ReqWakeup = 1;
+    if (IsDone)
+      Done(0);
+
     XNextEvent(dpy, &Event);
+
+    ReqWakeup = 0;
+    if (IsDone)
+      Done(0);
+
     (void)DispatchEvent();
   }
 }
