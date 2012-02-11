@@ -1533,6 +1533,9 @@ PlaySoundDone(int val)
 {
   if (PlaySound(S_STOP))
   {
+    if (!Scr)
+      Scr = ScreenList[0];
+
     /* allow time to emit */
     if (Scr->PauseOnExit)
       sleep(Scr->PauseOnExit);
@@ -1556,6 +1559,9 @@ Done(int signum)
 {
   CloseSound();
 
+  if (!Scr)
+    Scr = ScreenList[0];
+
   SetRealScreen(0, 0);
   Reborder(CurrentTime);
   XCloseDisplay(dpy);
@@ -1570,6 +1576,9 @@ Done(int signum)
 SIGNAL_T
 Done(int signum)
 {
+  if (!Scr)
+    Scr = ScreenList[0];
+
   SetRealScreen(0, 0);
   Reborder(CurrentTime);
   XCloseDisplay(dpy);
