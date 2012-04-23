@@ -725,7 +725,7 @@ PaintMenu(MenuRoot * mr, XEvent * e)
 	PaintEntry(mr, mi, True);
     }
   }
-  XSync(dpy, 0);
+  XSync(dpy, False);
 }
 
 
@@ -1589,7 +1589,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   {
     XMapWindow(dpy, menu->shadow);
   }
-  XSync(dpy, 0);
+  XSync(dpy, False);
 
   XQueryPointer(dpy, menu->w.win, &JunkRoot, &JunkChild, &x_root, &y_root, &JunkX, &JunkY, &JunkMask);
   MenuOrigX = x_root;
@@ -4596,7 +4596,7 @@ DeIconify(TwmWindow * tmp_win)
     }
   }
 
-  XSync(dpy, 0);
+  XSync(dpy, False);
 }
 
 
@@ -4723,7 +4723,7 @@ Iconify(TwmWindow * tmp_win, int def_x, int def_y)
     XMapWindow(dpy, tmp_win->list->icon);
 
   UpdateDesktop(tmp_win);
-  XSync(dpy, 0);
+  XSync(dpy, False);
 }
 
 
@@ -5425,7 +5425,7 @@ WarpScreenToWindow(TwmWindow * t)
    * This is an attempt to have windows redraw themselves, but
    * it doesn't always work (non-raising windows in particular).
    */
-  XSync(dpy, 0);
+  XSync(dpy, False);
 }
 
 void
@@ -6055,9 +6055,9 @@ setup_restart(Time time)
 #endif
 
   SetRealScreen(0, 0);
-  XSync(dpy, 0);
+  XSync(dpy, False);
   Reborder(time);
-  XSync(dpy, 0);
+  XSync(dpy, False);
 
   XCloseDisplay(dpy);
 

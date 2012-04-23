@@ -459,7 +459,7 @@ main(int argc, char **argv, char **environ)
     XSelectInput(dpy, RootWindow(dpy, scrnum),
 		 ColormapChangeMask | EnterWindowMask | FocusChangeMask | PropertyChangeMask |
 		 SubstructureRedirectMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask);
-    XSync(dpy, 0);
+    XSync(dpy, False);
     XSetErrorHandler(TwmErrorHandler);
 
     if (RedirectError)
@@ -767,7 +767,7 @@ main(int argc, char **argv, char **environ)
     Scr->TitleBarFont.y += ((Scr->TitleHeight - Scr->TitleBarFont.height) / 2);
 
     XGrabServer(dpy);
-    XSync(dpy, 0);
+    XSync(dpy, False);
 
     JunkX = 0;
     JunkY = 0;

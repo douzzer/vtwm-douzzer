@@ -856,7 +856,7 @@ AddPaintRealWindows(TwmWindow * tmp_win, int x, int y)
   {
     /* these allow the application window to be drawn */
     XUngrabServer(dpy);
-    XSync(dpy, 0);
+    XSync(dpy, False);
     XGrabServer(dpy);
   }
 }
@@ -1171,7 +1171,7 @@ AddMoveAndResize(TwmWindow * tmp_win, int ask_user)
 	while (TRUE)
 	{
 	  XUngrabServer(dpy);
-	  XSync(dpy, 0);
+	  XSync(dpy, False);
 	  XGrabServer(dpy);
 
 	  JunkMask = 0;
@@ -1335,7 +1335,7 @@ AddMoveAndResize(TwmWindow * tmp_win, int ask_user)
 	    {
 	      /* these allow the application window to be drawn */
 	      XUngrabServer(dpy);
-	      XSync(dpy, 0);
+	      XSync(dpy, False);
 	      XGrabServer(dpy);
 	    }
 	  }

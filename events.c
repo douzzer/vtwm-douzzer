@@ -140,7 +140,7 @@ AutoRaiseWindow(TwmWindow * tmp)
   RaiseStickyAbove();
   RaiseAutoPan();
 
-  XSync(dpy, 0);
+  XSync(dpy, False);
   enter_win = NULL;
   enter_flag = TRUE;
   raise_win = tmp;
@@ -152,7 +152,7 @@ SetRaiseWindow(TwmWindow * tmp)
   enter_flag = TRUE;
   enter_win = NULL;
   raise_win = tmp;
-  XSync(dpy, 0);
+  XSync(dpy, False);
 }
 
 
@@ -476,7 +476,7 @@ HandleColormapNotify(void)
     if (!ColortableThrashing)
     {
       ColortableThrashing = TRUE;
-      XSync(dpy, 0);
+      XSync(dpy, False);
     }
 
     if (cevent->serial >= Scr->cmapInfo.first_req)
@@ -1723,7 +1723,7 @@ HandleCreateNotify(void)
   fprintf(stderr, "CreateNotify w = 0x%x\n", Event.xcreatewindow.window);
   fflush(stderr);
   XBell(dpy, 0);
-  XSync(dpy, 0);
+  XSync(dpy, False);
 #endif
 }
 
@@ -2165,7 +2165,7 @@ HandleButtonPress(void)
     InfoLines = 0;
   }
 
-  XSync(dpy, 0);		/* XXX - remove? */
+  XSync(dpy, False);		/* XXX - remove? */
 
   if (ButtonPressed != -1 && !InfoLines	/* want menus if we have info box */
     )
@@ -3014,7 +3014,7 @@ HandleEnterNotify(void)
 	else
 	  Scr->RingLeader = Tmp_win;
       }
-      XSync(dpy, 0);
+      XSync(dpy, False);
       return;
     }				/* end if Tmp_win */
   }				/* end if !ActiveMenu */
@@ -3160,7 +3160,7 @@ HandleLeaveNotify(void)
 	}
       }
     }
-    XSync(dpy, 0);
+    XSync(dpy, False);
     return;
   }
 }
@@ -3894,7 +3894,7 @@ UninstallRootColormap(void)
      * If we have subsequent Enter or Leave Notify events,
      * we can skip the reload of pushed colormaps.
      */
-    XSync(dpy, 0);
+    XSync(dpy, False);
     args = 0;
     (void)XCheckIfEvent(dpy, &dummy, UninstallRootColormapQScanner, &args);
 

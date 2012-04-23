@@ -475,7 +475,7 @@ DoResize(int x_root, int y_root, TwmWindow * tmp_win)
       {
 	/* these let the application window be drawn - djhjr - 4/14/98 */
 	XUngrabServer(dpy);
-	XSync(dpy, 0);
+	XSync(dpy, False);
 	XGrabServer(dpy);
       }
     }
