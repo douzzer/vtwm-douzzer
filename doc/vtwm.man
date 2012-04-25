@@ -1862,6 +1862,10 @@ This variable indicates that the pointer should be warped into windows when
 they are first created or later deiconified.  If the optional \fIwin-list\fP is given,
 the pointer will only be warped when those windows are created or deiconified.
 It is set by default.
+.IP "\fBWarpNext\fP" 8
+With this variable set, the \fBf.warpto\fP function will begin searching vtwm's
+internal window list for a match beginning after the window with the focus,
+enabling multiple matches to be traversed. See also \fBf.warpto\fP.
 .IP "\fBWarpSnug\fP" 8
 With this variable set, the warp functions (\fBf.warp\fP and the like) will
 fit the entire window on the screen, i.e., they'll be snugged on the real
@@ -2538,7 +2542,10 @@ not a \fIregular expression\fP (see the
 .B WILDCARDS
 section for details).
 If the window is iconified, it will be deiconified if the \fBWarpUnmapped\fP
-variable is set, or else ignored.
+variable is set, or else ignored. If WarpNext is set, the search for a match
+begins just after the current window in vtwm's internal list of windows,
+enabling multiple matching windows to be traversed. By default, the first
+match will always be selected.
 .IP "\fBf.warptoiconmgr\fP \fIstring\fP" 8
 This function warps the pointer to the icon manager entry associated with
 the window containing the pointer in the icon manager specified by the

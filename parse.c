@@ -459,6 +459,7 @@ typedef struct _TwmKeyword
 #define kw0_StayUpOptionalMenus			45
 #define kw0_WarpSnug				46
 #define kw0_PointerPlacement			47
+#define kw0_WarpNext				48
 #define kw0_ShallowReliefWindowButton		52
 #define kw0_ButtonColorIsFrame			53
 #define kw0_FixManagedVirtualGeometries		54
@@ -951,6 +952,7 @@ static TwmKeyword keytable[] = {
   {"wait", WAIT, 0},
   {"warpcentered", WARP_CENTERED, 0},
   {"warpcursor", WARP_CURSOR, 0},
+  {"warpnext", KEYWORD, kw0_WarpNext},
   {"warpsnug", KEYWORD, kw0_WarpSnug},
   {"warptolocaltransients", KEYWORD, kw0_WarpToLocalTransients},
   {"warptotransients", KEYWORD, kw0_WarpToTransients},
@@ -1205,6 +1207,9 @@ do_single_keyword(int keyword)
 
     case kw0_FixTransientVirtualGeometries:
       Scr->FixTransientVirtualGeometries = TRUE;
+      return 1;
+    case kw0_WarpNext:
+      Scr->WarpNext = TRUE;
       return 1;
     case kw0_WarpSnug:
       Scr->WarpSnug = TRUE;

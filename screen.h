@@ -430,6 +430,7 @@ typedef struct ScreenInfo
     unsigned int VirtualSendsMotionEvents:1;
     unsigned int WarpCentered:2;
     unsigned int WarpCursor:1;
+    unsigned int WarpNext:1;
     unsigned int WarpSnug:1;
     unsigned int WarpToLocalTransients:1;
     unsigned int WarpToTransients:1;
@@ -510,6 +511,7 @@ typedef struct ScreenInfo
 #define VirtualSendsMotionEvents		userflags.VirtualSendsMotionEvents
 #define WarpCentered				userflags.WarpCentered
 #define WarpCursor				userflags.WarpCursor
+#define WarpNext				userflags.WarpNext
 #define WarpSnug				userflags.WarpSnug
 #define WarpToLocalTransients			userflags.WarpToLocalTransients
 #define WarpToTransients			userflags.WarpToTransients

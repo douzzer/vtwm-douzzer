@@ -3508,10 +3508,16 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
     case F_WARPTO:
       {
-	register TwmWindow *t;
+	TwmWindow *t;
+	TwmWindow *start = NULL, *end = NULL;
 	int did_warpto = FALSE;
 
-	for (t = Scr->TwmRoot.next; t != NULL; t = t->next)
+	if (Scr->WarpNext)
+	    start = end = Focus;
+	if (start == NULL)
+	  start = &Scr->TwmRoot;	/* implies end is still NULL */
+
+	for (t = start->next; t != NULL && t != end; )
 	{
 	  /*
 	   * This used to fall through into F_WARP, but the
@@ -3533,6 +3539,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	    WarpToWindow(tmp_win);
 	    break;
 	  }
+
+	  t = t->next;
+	  if (t == NULL && end)
+	    t = Scr->TwmRoot.next;	/* wrap window list */
 	}
 
 	if (!did_warpto)
