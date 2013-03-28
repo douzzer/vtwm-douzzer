@@ -525,6 +525,10 @@ cursor_entry	: FRAME string string {
 			NewBitmapCursor(&Scr->TitleCursor, $2, $3); }
 		| TITLE string {
 			NewFontCursor(&Scr->TitleCursor, $2); }
+		| WINDOW string string {
+			NewBitmapCursor(&Scr->WindowCursor, $2, $3); }
+		| WINDOW string {
+			NewFontCursor(&Scr->WindowCursor, $2); }
 		| ICON string string {
 			NewBitmapCursor(&Scr->IconCursor, $2, $3); }
 		| ICON string {

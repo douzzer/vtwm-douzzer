@@ -196,6 +196,7 @@ typedef struct ScreenInfo
 
   Cursor TitleCursor;		/* title bar cursor */
   Cursor FrameCursor;		/* frame cursor */
+  Cursor WindowCursor;		/* default cursor for client windows to be inherited from frame */
   Cursor IconCursor;		/* icon cursor */
   Cursor IconMgrCursor;		/* icon manager cursor */
   Cursor ButtonCursor;		/* title bar button cursor */

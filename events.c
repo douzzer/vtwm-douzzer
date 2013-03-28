@@ -2784,6 +2784,16 @@ HandleEnterNotify(void)
      */
     if (Tmp_win)
     {
+      if (ewp->window == Tmp_win->frame) {
+	/* entering frame either in "NotifyNormal" or in "NotifyUngrab" mode */
+	if (ewp->detail == NotifyVirtual || ewp->detail == NotifyNonlinearVirtual)
+	  /* entering frame "in-transit", final destination is client (subwindow), set inheritable cursor */
+	  XDefineCursor(dpy, Tmp_win->frame, Scr->WindowCursor);
+	else
+	  /* entering frame as "final destination" (either coming from client or from root-window) */
+	  XDefineCursor(dpy, Tmp_win->frame, Scr->FrameCursor);
+      }
+
 #ifdef TWM_USE_SLOPPYFOCUS
       if (SloppyFocus == TRUE)
       {
@@ -3120,6 +3130,10 @@ HandleLeaveNotify(void)
      */
     if (Event.xcrossing.mode != NotifyNormal)
       return;
+
+    if (Event.xcrossing.detail == NotifyInferior && Event.xcrossing.window == Tmp_win->frame)
+      /* leaving into client window, set inheritable cursor glyph */
+      XDefineCursor(dpy, Tmp_win->frame, Scr->WindowCursor);
 
     inicon = (Tmp_win->list && Tmp_win->list->w.win == Event.xcrossing.window);
 

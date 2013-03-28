@@ -1081,6 +1081,7 @@ InitVariables(void)
 
   NewFontCursor(&Scr->FrameCursor, "top_left_arrow");
   NewFontCursor(&Scr->TitleCursor, "top_left_arrow");
+  NewFontCursor(&Scr->WindowCursor, "top_left_arrow");
   NewFontCursor(&Scr->IconCursor, "top_left_arrow");
   NewFontCursor(&Scr->IconMgrCursor, "top_left_arrow");
   NewFontCursor(&Scr->MoveCursor, "fleur");

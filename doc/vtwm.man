@@ -664,6 +664,7 @@ The following example shows the default cursor definitions:
 {
     Frame      "top_left_arrow"
     Title      "top_left_arrow"
+    Window     "top_left_arrow"
     Icon       "top_left_arrow"
     IconMgr    "top_left_arrow"
     Move       "fleur"
@@ -679,6 +680,9 @@ The following example shows the default cursor definitions:
 }
 .fi
 .RE
+.IP
+Note: if the client provides a cursor glyph for its top-level window,
+that one is used instead of the value specified by \fIWindow\fP above.
 .IP "\fBDarkBevelContrast\fP \fIcontrast\fP" 8
 Indicates to \fBvtwm\fP has to calculate the dark bevel color for 3D items.
 The value is a comprised between 0 and 100. The formula used is:
