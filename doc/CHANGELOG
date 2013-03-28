@@ -3,6 +3,15 @@ A COMPLETE LISTING OF CHANGES MADE TO VTWM SINCE VERSION 5.0
 IN CHRONOLOGICAL ORDER FROM MOST RECENT CHANGES TO EARLIEST.
 ============================================================
 
+    March 2013
+	Steve Rader and Eeri Kask - handle default cursor for clients
+	which don't set their own.
+    April 2012
+    	Michael Richardson & Callum Gibson - modify warpto behaviour so
+	    it continues searching from where it is.
+    March 2012
+    	Eeri Kask & Callum Gibson - fix ShowIconManager behaviour.
+	Seth Robertson & Callum Gibson - various fixes and cleanups.
     December 2011
         Eeri Kask - Allow vtwm's own windows to start iconified
 	Seth Robertson - Fix OSS sound warnings
