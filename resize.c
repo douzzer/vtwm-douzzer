@@ -2459,6 +2459,57 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
 	  }
 	}
       }
+      break;
+
+    case F_RESIZETO:
+
+      mm = XQueryPointer (dpy, tmp_win->frame, &JunkRoot, &JunkChild,
+			    &JunkX, &JunkY, &HotX, &HotY, &JunkMask);
+
+      /* check if mouse on target area */
+      if (mm == True
+	    && basex <= JunkX && JunkX < basex + basew
+	    && basey <= JunkY && JunkY < basey + baseh)
+      {
+	if (HotX < -(int)(JunkBW) || HotX >= dragWidth  + (int)(JunkBW) ||
+	    HotY < -(int)(JunkBW) || HotY >= dragHeight + (int)(JunkBW))
+	{
+	  mm = False;
+	}
+      }
+      else
+	mm = False;
+
+      /*
+       * Recover missing bits from WxH+x+y
+       */
+      if (!(origMask & XValue))
+	origx = V_TO_R_X(tmp_win->save_frame_x);
+      if (!(origMask & YValue))
+	origy = V_TO_R_Y(tmp_win->save_frame_y);
+      if (!(origMask & WidthValue))
+	origWidth = tmp_win->save_frame_width;
+      if (!(origMask & HeightValue))
+	origHeight = tmp_win->save_frame_height;
+      origMask |= XValue|YValue|WidthValue|HeightValue;
+
+      dragHeight = origHeight;
+      dragWidth = origWidth;
+      dragx = origx;
+      dragy = origy;
+
+
+      // Find upper right corner in case this is negative adjustment (fix upper right corner)
+      JunkX = dragx + dragWidth;
+      JunkY = dragy + dragHeight;
+
+      ConstrainSize(tmp_win, &dragWidth, &dragHeight);
+
+      if (origMask & XNegative)
+	dragx = JunkX-dragWidth-frame_bw_times_2;
+
+      if (origMask & YNegative)
+	dragy = JunkY-dragHeight-frame_bw_times_2;
 
       break;
     }
@@ -2480,7 +2531,7 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
   ResizeTwmWindowContents(tmp_win, dragWidth, dragHeight);
 
   /* if mouse did/would fall inside the window, move mouse as well: */
-  if (mm == True && flag == F_PANELGEOMETRYMOVE)
+  if (mm == True && (flag == F_PANELGEOMETRYMOVE || flag == F_RESIZETO))
     XWarpPointer(dpy, None, tmp_win->frame, 0, 0, 0, 0, HotX, HotY);
 }
 
@@ -2505,6 +2556,31 @@ fullgeomzoom(char *geometry_name, TwmWindow *tmp_win, int flag)
   origx = origy = origWidth = origHeight = 0;
   origMask = XParseGeometry (geom, &origx, &origy,
 			(unsigned int *)&origWidth, (unsigned int *)&origHeight);
+
+  if (flag == F_RESIZETO)
+  {
+    int baseWidth = 0;
+    int baseHeight = 0;
+
+    if (tmp_win->hints.flags & PBaseSize)
+    {
+      baseWidth = tmp_win->hints.base_width;
+      baseHeight = tmp_win->hints.base_height;
+    }
+    else if (tmp_win->hints.flags & PMinSize)
+    {
+      baseWidth = tmp_win->hints.min_width;
+      baseHeight = tmp_win->hints.min_height;
+    }
+
+    if (tmp_win->hints.flags & PResizeInc)
+    {
+      origWidth *= tmp_win->hints.width_inc;
+      origHeight *= tmp_win->hints.height_inc;
+    }
+    origWidth += baseWidth;
+    origHeight += baseHeight + tmp_win->title_height;
+  }
 
   fullzoom (tile, tmp_win, flag);
 }

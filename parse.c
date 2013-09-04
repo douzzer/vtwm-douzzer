@@ -711,6 +711,7 @@ static TwmKeyword keytable[] = {
   {"f.refresh", FKEYWORD, F_REFRESH},
   {"f.resetdesktop", FKEYWORD, F_RESETDESKTOP},
   {"f.resize", FKEYWORD, F_RESIZE},
+  {"f.resizeto", FSKEYWORD, F_RESIZETO},
   {"f.restart", FKEYWORD, F_RESTART},
   {"f.righticonmgr", FKEYWORD, F_RIGHTICONMGR},
   {"f.rightzoom", FKEYWORD, F_RIGHTZOOM},

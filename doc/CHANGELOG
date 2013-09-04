@@ -3,6 +3,8 @@ A COMPLETE LISTING OF CHANGES MADE TO VTWM SINCE VERSION 5.0
 IN CHRONOLOGICAL ORDER FROM MOST RECENT CHANGES TO EARLIEST.
 ============================================================
 
+    June 2013
+	Seth Robertson - create f.resizeto to allow canned resizes
     March 2013
 	Steve Rader and Eeri Kask - handle default cursor for clients
 	which don't set their own.

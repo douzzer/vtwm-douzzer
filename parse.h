@@ -182,6 +182,7 @@
 #define F_PANELTOPMOVE		141
 #define F_PANELBOTTOMMOVE	142
 #define F_PANELGEOMETRYMOVE	143
+#define F_RESIZETO		144
 
 #define D_NORTH			1
 #define D_SOUTH			2

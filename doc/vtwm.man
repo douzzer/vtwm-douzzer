@@ -2389,6 +2389,11 @@ setting \fBAutoRelativeResize\fP) until the invoking pointer button is
 released, at which time the window is raised (subject to
 \&\fBRaiseOnStart\fP, \fBMoveDelta\fP, and \fBNoRaiseOnResize\fP). To abort
 the resize, press another button before releasing the invoking button.
+.IP "\fBf.resizeto \fIgeomstring\fP" 8
+This function caused the window to be resized and moved to the
+indicated geometry provided as a command line argument.  This could be
+needed to, for example, resize your terminal windows which were
+maximized or otherwise zoomed across a vtwm or xrandr reset.
 .IP "\fBf.restart\fP" 8
 This function kills and restarts \fBvtwm\fP. See also \fBf.startwm\fP.
 .IP "\fBf.righticonmgr\fP" 8

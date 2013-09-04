@@ -2473,12 +2473,13 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
     case F_PANELTOPMOVE:
     case F_PANELBOTTOMMOVE:
     case F_PANELGEOMETRYMOVE:
+    case F_RESIZETO:
       if (DeferExecution(context, func, Scr->SelectCursor))
 	return TRUE;
 
       PopDownMenu();
 
-      if (func == F_PANELGEOMETRYZOOM || func == F_PANELGEOMETRYMOVE)
+      if (func == F_PANELGEOMETRYZOOM || func == F_PANELGEOMETRYMOVE || func == F_RESIZETO)
 	fullgeomzoom (action, tmp_win, func);
       else
 	fullzoom (ParsePanelIndex(action), tmp_win, func);
