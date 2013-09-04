@@ -775,7 +775,7 @@ main(int argc, char **argv, char **environ)
     XQueryTree(dpy, Scr->Root, &root, &parent, &children, &nchildren);
     CreateIconManagers();
 
-    if (Scr->VirtualDesktopWidth > 0)
+    if (Scr->Virtual == TRUE)
     {
       CreateDesktopDisplay();
       DoInitialMapping(Scr->VirtualDesktopDisplayTwin);
