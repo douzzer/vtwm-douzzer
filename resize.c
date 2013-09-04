@@ -2234,14 +2234,13 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
       else
 	mm = False;
 
-
-#ifdef TILED_SCREEN
-
       dx = dragx - basex;
       dy = dragy - basey;
 
-      if (dx < 0 || basew < dx + dragWidth + frame_bw_times_2
-	  || dy < 0 || baseh < dy + dragHeight + frame_bw_times_2)
+#ifdef TILED_SCREEN
+      if ((dx < 0 || basew < dx + dragWidth + frame_bw_times_2 ||
+	   dy < 0 || baseh < dy + dragHeight + frame_bw_times_2) &&
+	  Scr->use_tiles == TRUE)
       {
 	/*
 	 * target area/panel is (partially) outside the source area/panel:
@@ -2359,16 +2358,12 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
 	dx = dragx - basex;
 	dy = dragy - basey;
       }
-
-#else /*TILED_SCREEN*/
-
-      SET_dragx_TO_PHYSICALLY_VISIBLE;
-      SET_dragy_TO_PHYSICALLY_VISIBLE;
-      dx = dragx - basex;
-      dy = dragy - basey;
-
+      else
 #endif /*TILED_SCREEN*/
-
+      {
+	SET_dragx_TO_PHYSICALLY_VISIBLE;
+	SET_dragy_TO_PHYSICALLY_VISIBLE;
+      }
 
       /* now finally treat horizontal geometry ('W' and 'X' of "WxH+X+Y"): */
       if (((origMask & (XValue|WidthValue)) == (XValue|WidthValue)) && (origWidth > 0))
@@ -2376,7 +2371,7 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
 #ifdef INCREMENTALZOOM_BOUNCINGEDGES
 	/* stepping/stretching reached panel edge, execute 'unzoom' */
 	if ((tmp_win->zoomed != ZOOM_NONE)
-	      && origx == 0 && (dx == 0 || dx + dragWidth + frame_bw_times_2 == basew))
+	    && origx == 0 && (dx == 0 || dx + dragWidth + frame_bw_times_2 == basew))
 	  goto unzoom;
 #endif
 	if (origMask & XNegative) { /** step/stretch to the left **/
@@ -2425,7 +2420,7 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
       {
 #ifdef INCREMENTALZOOM_BOUNCINGEDGES
 	if ((tmp_win->zoomed != ZOOM_NONE)
-	      && origy == 0 && (dy == 0 || dy + dragHeight + frame_bw_times_2 == baseh))
+	    && origy == 0 && (dy == 0 || dy + dragHeight + frame_bw_times_2 == baseh))
 	  goto unzoom;
 #endif
 	if (origMask & YNegative) { /* step/stretch up */
