@@ -1834,8 +1834,7 @@ nxt:;
  */
 
 
-#define SET_dragx_TO_PHYSICALLY_VISIBLE		\
-	dragx = V_TO_R_X(tmp_win->save_frame_x);					\
+#define CHK_dragx_IF_PHYSICALLY_VISIBLE		\
 	if (dragx < basex || dragx + dragWidth + frame_bw_times_2 > basex + basew)	\
 	{	\
 	    dragx = basex + (tmp_win->save_frame_x % basew);			\
@@ -1850,8 +1849,7 @@ nxt:;
 	}
 
 
-#define SET_dragy_TO_PHYSICALLY_VISIBLE		\
-	dragy = V_TO_R_Y(tmp_win->save_frame_y);					\
+#define CHK_dragy_IF_PHYSICALLY_VISIBLE		\
 	if (dragy < basey || dragy + dragHeight + frame_bw_times_2 > basey + baseh)	\
 	{	\
 	    dragy = basey + (tmp_win->save_frame_y % baseh);			\
@@ -1864,6 +1862,15 @@ nxt:;
 		dragy = basey;			\
 	    }	\
 	}
+
+
+#define SET_dragx_TO_PHYSICALLY_VISIBLE		\
+	dragx = V_TO_R_X(tmp_win->save_frame_x);\
+	CHK_dragx_IF_PHYSICALLY_VISIBLE
+
+#define SET_dragy_TO_PHYSICALLY_VISIBLE		\
+	dragy = V_TO_R_Y(tmp_win->save_frame_y);\
+	CHK_dragy_IF_PHYSICALLY_VISIBLE
 
 
 void
@@ -2234,135 +2241,139 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
       else
 	mm = False;
 
-      dx = dragx - basex;
-      dy = dragy - basey;
 
 #ifdef TILED_SCREEN
-      if ((dx < 0 || basew < dx + dragWidth + frame_bw_times_2 ||
-	   dy < 0 || baseh < dy + dragHeight + frame_bw_times_2) &&
-	  Scr->use_tiles == TRUE)
+      if (Scr->use_tiles == TRUE)
       {
-	/*
-	 * target area/panel is (partially) outside the source area/panel:
-	 * recompute dragx, dragy
-	 */
-	if (dragWidth + frame_bw_times_2 < basew) {
-	  if (dragHeight + frame_bw_times_2 < baseh) {
-	    /* window completely fits onto target panel */
-	    int k, a;
-	    Lft(Area) = dragx;
-	    Rht(Area) = dragx + frame_bw_times_2 + dragWidth  - 1;
-	    Bot(Area) = dragy;
-	    Top(Area) = dragy + frame_bw_times_2 + dragHeight - 1;
-	    k = FindNearestTileToArea (Area);
-	    a = FindAreaIntersection (Area, Scr->tiles[k]);
-	    if (a == (dragWidth+frame_bw_times_2) * (dragHeight+frame_bw_times_2))
-	    {
-	      /* completely fitted on source panel, move to target panel, keep relative location */
-	      dragx = basex + (dragx - Lft(Scr->tiles[k])) * (basew - frame_bw_times_2 - dragWidth)
-				/ (AreaWidth(Scr->tiles[k])  - frame_bw_times_2 - dragWidth);
-	      dragy = basey + (dragy - Bot(Scr->tiles[k])) * (baseh - frame_bw_times_2 - dragHeight)
-				/ (AreaHeight(Scr->tiles[k]) - frame_bw_times_2 - dragHeight);
-	    }
-	    else
-	    {
-	      /*
-	       * intersected various panels in source area,
-	       * find empty area on target panel or place centered
-	       */
-	      PlaceXY area;
-	      area.x = basex;
-	      area.y = basey;
-	      area.width = basew;
-	      area.height = baseh;
-	      area.next = NULL;
-	      if (FindEmptyArea(Scr->TwmRoot.next, tmp_win, &area, &area) == TRUE)
+	dx = dragx - basex;
+	dy = dragy - basey;
+
+	if (dx < 0 || basew < dx + dragWidth + frame_bw_times_2 || dy < 0 || baseh < dy + dragHeight + frame_bw_times_2)
+	{
+	  /*
+	   * target area/panel is (partially) outside the source area/panel:
+	   * recompute dragx, dragy
+	   */
+	  if (dragWidth + frame_bw_times_2 < basew) {
+	    if (dragHeight + frame_bw_times_2 < baseh) {
+	      /* window completely fits onto target panel */
+	      int k, a;
+	      Lft(Area) = dragx;
+	      Rht(Area) = dragx + frame_bw_times_2 + dragWidth  - 1;
+	      Bot(Area) = dragy;
+	      Top(Area) = dragy + frame_bw_times_2 + dragHeight - 1;
+	      k = FindNearestTileToArea (Area);
+	      a = FindAreaIntersection (Area, Scr->tiles[k]);
+	      if (a == (dragWidth+frame_bw_times_2) * (dragHeight+frame_bw_times_2))
 	      {
-		/* found emtpy area large enough to completely fit the window */
-		int x, y, b = Scr->TitleHeight + (int)(JunkBW);
-		/* slightly off-centered: */
-		x = (area.width  - dragWidth)  / 3;
-		y = (area.height - dragHeight) / 2;
-		/* tight placing: */
-		if (y < b && x > b)
-		  x = b;
-		if (x < b && y > b)
-		  y = b;
-		/* loosen placing: */
-		if (area.width  > 4*b + dragWidth  && x > 2*b)
-		  x = 2*b;
-		if (area.height > 4*b + dragHeight && y > 2*b)
-		  y = 2*b;
-		dragx = area.x + x;
-		dragy = area.y + y;
+		/* completely fitted on source panel, move to target panel, keep relative location */
+		dragx = basex + (dragx - Lft(Scr->tiles[k])) * (basew - frame_bw_times_2 - dragWidth)
+				/ (AreaWidth(Scr->tiles[k])  - frame_bw_times_2 - dragWidth);
+		dragy = basey + (dragy - Bot(Scr->tiles[k])) * (baseh - frame_bw_times_2 - dragHeight)
+				/ (AreaHeight(Scr->tiles[k]) - frame_bw_times_2 - dragHeight);
 	      }
 	      else
 	      {
-		/* not found empty area, put centered onto target panel */
-		dragx = basex + (basew - dragWidth  - frame_bw_times_2) / 2;
-		dragy = basey + (baseh - dragHeight - frame_bw_times_2) / 2;
+		/*
+		 * intersected various panels in source area,
+		 * find empty area on target panel or place centered
+		 */
+		PlaceXY area;
+		area.x = basex;
+		area.y = basey;
+		area.width = basew;
+		area.height = baseh;
+		area.next = NULL;
+		if (FindEmptyArea(Scr->TwmRoot.next, tmp_win, &area, &area) == TRUE)
+		{
+		  /* found emtpy area large enough to completely fit the window */
+		  int x, y, b = Scr->TitleHeight + (int)(JunkBW);
+		  /* slightly off-centered: */
+		  x = (area.width  - dragWidth)  / 3;
+		  y = (area.height - dragHeight) / 2;
+		  /* tight placing: */
+		  if (y < b && x > b)
+		    x = b;
+		  if (x < b && y > b)
+		    y = b;
+		  /* loosen placing: */
+		  if (area.width  > 4*b + dragWidth  && x > 2*b)
+		    x = 2*b;
+		  if (area.height > 4*b + dragHeight && y > 2*b)
+		    y = 2*b;
+		  dragx = area.x + x;
+		  dragy = area.y + y;
+		}
+		else
+		{
+		  /* not found empty area, put centered onto target panel */
+		  dragx = basex + (basew - dragWidth  - frame_bw_times_2) / 2;
+		  dragy = basey + (baseh - dragHeight - frame_bw_times_2) / 2;
+		}
 	      }
-	    }
-	  } else {
-	    /* vertically not fitting onto target panel */
-	    if ((tmp_win->hints.flags & PWinGravity)
+	    } else {
+	      /* vertically not fitting onto target panel */
+	      if ((tmp_win->hints.flags & PWinGravity)
 		  && (tmp_win->hints.win_gravity == SouthWestGravity
 		      || tmp_win->hints.win_gravity == SouthGravity
 		      || tmp_win->hints.win_gravity == SouthEastGravity))
-	    {
-	      /* align to panel lower edge */
-	      dragy = basey + (baseh - dragHeight - frame_bw_times_2);
-	      basey = dragy;
-	    } else
-	      /* align to panel upper edge */
-	      dragy = basey;
-	    if (dx < 0 || basew < dx + dragWidth + frame_bw_times_2)
-	      /* fitting, but out of screen, put horizontally centered */
-	      dragx = basex + (basew - dragWidth  - frame_bw_times_2) / 2;
-	  }
-	} else {
-	  /* horizontally not fitting onto target panel */
-	  if ((tmp_win->hints.flags & PWinGravity)
+	      {
+		/* align to panel lower edge */
+		dragy = basey + (baseh - dragHeight - frame_bw_times_2);
+		basey = dragy;
+	      } else
+		/* align to panel upper edge */
+		dragy = basey;
+	      if (dx < 0 || basew < dx + dragWidth + frame_bw_times_2)
+		/* fitting, but out of screen, put horizontally centered */
+		dragx = basex + (basew - dragWidth  - frame_bw_times_2) / 2;
+	    }
+	  } else {
+	    /* horizontally not fitting onto target panel */
+	    if ((tmp_win->hints.flags & PWinGravity)
 		&& (tmp_win->hints.win_gravity == NorthEastGravity
 		    || tmp_win->hints.win_gravity == EastGravity
 		    || tmp_win->hints.win_gravity == SouthEastGravity))
-	  {
-	    /* align to panel right edge */
-	    dragx = basex + (basew - dragWidth - frame_bw_times_2);
-	    basex = dragx;
-	  } else
-	    /* align to panel left edge */
-	    dragx = basex;
+	    {
+	      /* align to panel right edge */
+	      dragx = basex + (basew - dragWidth - frame_bw_times_2);
+	      basex = dragx;
+	    } else
+	      /* align to panel left edge */
+	      dragx = basex;
 
-	  /* check fitting vertically */
-	  if (dragHeight + frame_bw_times_2 < baseh) {
-	    if (dy < 0 || baseh < dy + dragHeight + frame_bw_times_2)
-	      /* fitting, but out of screen, put vertically centered */
-	      dragy = basey + (baseh - dragHeight - frame_bw_times_2) / 2;
-	  } else {
-	    /* no, vertically not fitting onto target panel */
-	    if ((tmp_win->hints.flags & PWinGravity)
+	    /* check fitting vertically */
+	    if (dragHeight + frame_bw_times_2 < baseh) {
+	      if (dy < 0 || baseh < dy + dragHeight + frame_bw_times_2)
+		/* fitting, but out of screen, put vertically centered */
+		dragy = basey + (baseh - dragHeight - frame_bw_times_2) / 2;
+	    } else {
+	      /* no, vertically not fitting onto target panel */
+	      if ((tmp_win->hints.flags & PWinGravity)
 		  && (tmp_win->hints.win_gravity == SouthWestGravity
 		      || tmp_win->hints.win_gravity == SouthGravity
 		      || tmp_win->hints.win_gravity == SouthEastGravity))
-	    {
-	      /* align to panel lower edge */
-	      dragy = basey + (baseh - dragHeight - frame_bw_times_2);
-	      basey = dragy;
-	    } else
-	      /* align to panel upper edge */
-	      dragy = basey;
+	      {
+		/* align to panel lower edge */
+		dragy = basey + (baseh - dragHeight - frame_bw_times_2);
+		basey = dragy;
+	      } else
+		/* align to panel upper edge */
+		dragy = basey;
+	    }
 	  }
-	}
 
-	dx = dragx - basex;
-	dy = dragy - basey;
+	  dx = dragx - basex;
+	  dy = dragy - basey;
+	}
       }
       else
 #endif /*TILED_SCREEN*/
       {
-	SET_dragx_TO_PHYSICALLY_VISIBLE;
-	SET_dragy_TO_PHYSICALLY_VISIBLE;
+	CHK_dragx_IF_PHYSICALLY_VISIBLE;
+	CHK_dragy_IF_PHYSICALLY_VISIBLE;
+	dx = dragx - basex;
+	dy = dragy - basey;
       }
 
       /* now finally treat horizontal geometry ('W' and 'X' of "WxH+X+Y"): */
