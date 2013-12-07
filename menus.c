@@ -2984,7 +2984,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
       if (DeferExecution(context, func, Scr->SelectCursor))
 	return TRUE;
 
-      if (tmp_win->icon || (func == F_DEICONIFY && tmp_win == tmp_win->list->twm))
+      if (tmp_win->icon || (func == F_DEICONIFY && tmp_win->list && tmp_win == tmp_win->list->twm))
       {
 #ifdef SOUND_SUPPORT
 	PlaySound(func);
