@@ -103,7 +103,9 @@ static int MatchWinName(char *action, TwmWindow * t);
 
 int ConstMove = FALSE;		/* constrained move variables */
 
-/* for comparison against MoveDelta - djhjr - 9/5/98 */
+/* The location of the most recent poped-up menu.
+ * Used by UpdateMenu to see if the mouse has moved more than MoveDelta
+ * since the menu was mapped. */
 static int MenuOrigX, MenuOrigY;
 
 /* Globals used to keep track of whether the mouse has moved during
@@ -733,6 +735,9 @@ static Bool fromMenu;
 
 extern int GlobalFirstTime;
 
+/*
+ * Process events inside a menu and its submenus until the menu is exited.
+ */
 void
 UpdateMenu(void)
 {
@@ -781,20 +786,26 @@ UpdateMenu(void)
     if (Event.type != MotionNotify)
       continue;
 
-    /* if we haven't received the enter notify yet, wait */
+    /* If we haven't received the enter event yet, wait for it. */
     if (!ActiveMenu || !ActiveMenu->entered)
       continue;
 
+    /* done will be set true if all required item highlighting/unhighlighting
+     * has been completed. */
     done = FALSE;
+    /* Find where the mouse is. */
     XQueryPointer(dpy, ActiveMenu->w.win, &JunkRoot, &JunkChild, &x_root, &y_root, &x, &y, &JunkMask);
 
     if (!ActiveItem)
+      /* If the mouse hasn't moved MoveDelta since the menu was popped-up,
+       * ignore the motion. */
       if (abs(x_root - MenuOrigX) < Scr->MoveDelta && abs(y_root - MenuOrigY) < Scr->MoveDelta)
 	continue;
 
-
+    /* Set Scr as an implicit argument for operations. */
     XFindContext(dpy, ActiveMenu->w.win, ScreenContext, (caddr_t *) & Scr);
 
+    /* Remove the effect of MenuBevel{Width,Height}. */
     JunkWidth = ActiveMenu->width;
     JunkHeight = ActiveMenu->height;
     if (Scr->MenuBevelWidth > 0)
@@ -809,6 +820,10 @@ UpdateMenu(void)
     if ((x < 0 || y < 0 || x >= JunkWidth || y >= JunkHeight) ||
 	(ActiveMenu->too_tall && (y < Scr->MenuScrollBorderWidth || y > JunkHeight - Scr->MenuScrollBorderWidth)))
     {
+      /* Mouse is outside the menu itself, or is in the scrolling border.
+       * Check for scrolling actions. */
+
+      /* Exit the active item, if there is one. */
       if (ActiveItem && ActiveItem->func != F_TITLE)
       {
 	ActiveItem->state = 0;
@@ -848,7 +863,7 @@ UpdateMenu(void)
       continue;
     }
 
-    /* look for the entry that the mouse is in */
+    /* Look for the entry that the mouse is in. */
     entry = (y / Scr->EntryHeight) + ActiveMenu->top;
     for (i = 0, mi = ActiveMenu->first; mi != NULL; i++, mi = mi->next)
     {
@@ -898,6 +913,8 @@ UpdateMenu(void)
 
     if (ActiveItem && ActiveItem->func == F_MENU && (x > PULLDOWNMENU_OFFSET))
     {
+      /* Pop up the submenu. */
+
       MenuRoot *save = ActiveMenu;
       int savex = MenuOrigins[MenuDepth - 1].x;
       int savey = MenuOrigins[MenuDepth - 1].y;
@@ -1129,7 +1146,7 @@ MakeMenu(MenuRoot * mr)
   Scr->EntryHeight = MAX(Scr->MenuFont.height, Scr->MenuTitleFont.height) + 4;
 #endif
 
-  /* lets first size the window accordingly */
+  /* let's first size the window accordingly */
   if (mr->mapped == NEVER_MAPPED)
   {
     if (mr->pull == TRUE)
@@ -1406,7 +1423,8 @@ MakeMenu(MenuRoot * mr)
  *	Inputs:
  *	menu	- the root pointer of the menu to pop up
  *	x, y	- location of upper left of menu
- *		center	- whether or not to center horizontally over position
+ *	center	- if true, center the menu horizontally over position x,y
+ *		  if false, place upper-left of menu at position x,y
  *
  ***********************************************************************
  */
@@ -1441,7 +1459,8 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   {
     TwmWindow *tmp_win;
 
-    /* this is the twm windows menu,  let's go ahead and build it */
+    /* This is the twm windows menu.  Its contents must be regenerated to
+     * ensure that they are current. */
 
     DestroyMenu(menu);
 
@@ -1579,9 +1598,6 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   if (Scr->Shadow)
   {
     XMoveWindow(dpy, menu->shadow, x + SHADOWWIDTH, y + SHADOWWIDTH);
-  }
-  if (Scr->Shadow)
-  {
     XRaiseWindow(dpy, menu->shadow);
   }
   XMapRaised(dpy, menu->w.win);
@@ -1592,6 +1608,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   XSync(dpy, False);
 
   XQueryPointer(dpy, menu->w.win, &JunkRoot, &JunkChild, &x_root, &y_root, &JunkX, &JunkY, &JunkMask);
+  /* Set MenuOrig{X,Y} for use by PopupMenu. */
   MenuOrigX = x_root;
   MenuOrigY = y_root;
 

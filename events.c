@@ -91,7 +91,9 @@ int Context = C_NO_CONTEXT;	/* current button press context */
 TwmWindow *ButtonWindow;	/* button press window structure */
 XEvent ButtonEvent;		/* button press event */
 XEvent Event;			/* the current event */
-TwmWindow *Tmp_win;		/* the current twm window */
+TwmWindow *Tmp_win;		/* During event processing points to the
+				 * TwmWindow structure for the window of the
+				 * event.  Also used as a scratch variable. */
 
 /* Used in HandleEnterNotify to remove border highlight from a window
  * that has not recieved a LeaveNotify event because of a pointer grab
@@ -350,6 +352,7 @@ DispatchEvent(void)
   if (XFindContext(dpy, w, TwmContext, (caddr_t *) & Tmp_win) == XCNOENT)
     Tmp_win = NULL;
 
+  /* Set Scr as an implicit argument for operations. */
   if (XFindContext(dpy, w, ScreenContext, (caddr_t *) & Scr) == XCNOENT)
     Scr = FindScreenInfo(WindowOfEvent(&Event));
 
@@ -2169,7 +2172,7 @@ HandleButtonPress(void)
 
   if (ButtonPressed != -1 && !InfoLines	/* want menus if we have info box */
     )
-  {				/* we got another butt press in addition to one still held
+  {				/* we got another button press in addition to one still held
 				 * down, we need to cancel the operation we were doing
 				 */
     Cancel = TRUE;
@@ -3038,6 +3041,7 @@ HandleEnterNotify(void)
   mr->entered = TRUE;
   if (RootFunction == F_NOFUNCTION)
   {
+    /* If there is no deferred operation. */
     MenuRoot *tmp;
 
     for (tmp = ActiveMenu; tmp; tmp = tmp->prev)
@@ -3047,6 +3051,7 @@ HandleEnterNotify(void)
     }
     if (!tmp)
       return;
+    /* Unmap all subordinate menus that were exited. */
     for (tmp = ActiveMenu; tmp != mr; tmp = tmp->prev)
     {
       /* all 'tmp' were 'ActiveMenu'... DUH! - djhjr - 11/16/98 */
@@ -3136,7 +3141,6 @@ HandleLeaveNotify(void)
       XDefineCursor(dpy, Tmp_win->frame, Scr->WindowCursor);
 
     inicon = (Tmp_win->list && Tmp_win->list->w.win == Event.xcrossing.window);
-
 
     if (FocusRoot)
     {

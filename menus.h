@@ -74,12 +74,14 @@ typedef struct MenuItem
 
 } MenuItem;
 
+/* The structure for the whole of the menu. */
 typedef struct MenuRoot
 {
   struct MenuItem *first;	/* first item in menu */
   struct MenuItem *last;	/* last item in menu */
-  struct MenuRoot *prev;	/* previous root menu if pull right */
-  struct MenuRoot *next;	/* next in list of root menus */
+  struct MenuRoot *prev;	/* the parent MenuRoot if this menu was entered
+				 * by pulling right from another menu */
+  struct MenuRoot *next;	/* next in the list of MenuRoots */
   char *name;			/* name of root */
   MyWindow w;			/* the window of the menu */
   Window shadow;		/* the shadow window */
@@ -91,7 +93,8 @@ typedef struct MenuRoot
   short width;			/* width of the menu */
   short items;			/* number of items in the menu */
   short pull;			/* is there a pull right entry? */
-  short entered;		/* EnterNotify following pop up */
+  short entered;		/* EnterNotify following pop up of this menu
+				 * has been processed */
   short real_menu;		/* this is a real menu */
 
   short too_tall;		/* menu taller than display? */

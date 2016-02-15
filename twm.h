@@ -172,10 +172,12 @@ typedef struct
 /* defines for zooming/unzooming */
 #define ZOOM_NONE 0
 
+/* Change the foreground and background colors of the NormalGC of the specified
+ * screen. */
 #define FB(scr, fix_fore, fix_back)\
     Gcv.foreground = fix_fore;\
     Gcv.background = fix_back;\
-    XChangeGC(dpy, (scr)->NormalGC, GCForeground|GCBackground,&Gcv)
+    XChangeGC(dpy, (scr)->NormalGC, GCForeground|GCBackground, &Gcv)
 
 typedef enum
 { on, off } ButtonState;
@@ -479,11 +481,14 @@ extern Cursor LeftButt;
 
 extern XClassHint NoClass;
 
-extern XContext TwmContext;
-extern XContext MenuContext;
+extern XContext TwmContext;	/* context key for storing the TwmWindow for
+				 * a window */
+extern XContext MenuContext;	/* context key for storing the MenuRoot
+				 * corresponding to a menu window */
 extern XContext IconManagerContext;
 extern XContext VirtualContext;
-extern XContext ScreenContext;
+extern XContext ScreenContext;	/* context key for storing the ScreenInfo*
+				 * for the screen on which a window appears */
 extern XContext ColormapContext;
 extern XContext DoorContext;
 
@@ -498,7 +503,7 @@ extern Window JunkChild;
 extern int JunkX;
 extern int JunkY;
 extern unsigned int JunkWidth, JunkHeight, JunkBW, JunkDepth, JunkMask;
-extern XGCValues Gcv;
+extern XGCValues Gcv;		/* Scratch XGCValues. */
 extern int InfoLines;
 extern char Info[][INFO_SIZE];
 extern int Argc;
