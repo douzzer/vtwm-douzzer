@@ -3071,16 +3071,6 @@ HandleEnterNotify(void)
     ActiveMenu = mr;
   }
 
-  /* Hack:  Grab pointer because sometimes the pointer has been
-   * ungrabbed for unknown reasons. */
-  {
-    int mask;
-    mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionHintMask;
-    if (Scr->StayUpMenus)
-      mask |= PointerMotionMask;
-    XGrabPointer(dpy, Scr->Root, True, mask, GrabModeAsync, GrabModeAsync, Scr->Root, Scr->MenuCursor, CurrentTime);
-  }
-
   return;
 }
 
