@@ -363,15 +363,11 @@ LookInNameList(name_list * list_head, char *name)
 int
 GetColorFromList(name_list * list_head, char *name, XClassHint * class, Pixel * ptr)
 {
-  int save;
   char *val = LookInList(list_head, name, class);
 
   if (val)
   {
-    save = Scr->FirstTime;
-    Scr->FirstTime = TRUE;
-    GetColor(Scr->Monochrome, ptr, val);
-    Scr->FirstTime = save;
+    GetColorAlways(Scr->Monochrome, ptr, val);
 
     return (TRUE);
   }

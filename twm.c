@@ -614,7 +614,7 @@ main(int argc, char **argv, char **environ)
     else
       Scr->Monochrome = COLOR;
 
-    /* setup default colors */
+    /* set up default colors */
     Scr->FirstTime = TRUE;
     GetColor(Scr->Monochrome, &black, "black");
     Scr->Black = black;

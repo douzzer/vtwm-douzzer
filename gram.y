@@ -1096,15 +1096,8 @@ static MenuRoot *GetRoot(char *name, char *fore, char *back)
 
   if (fore)
   {
-    int save;
-
-    save = Scr->FirstTime;
-    Scr->FirstTime = TRUE;
-
-    GetColor(COLOR, &tmp->highlight.fore, fore);
-    GetColor(COLOR, &tmp->highlight.back, back);
-
-    Scr->FirstTime = save;
+    GetColorAlways(COLOR, &tmp->highlight.fore, fore);
+    GetColorAlways(COLOR, &tmp->highlight.back, back);
   }
 
   return tmp;

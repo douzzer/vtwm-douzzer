@@ -13,6 +13,7 @@ extern void MoveOutline(Window root, int x, int y, int width, int height, int bw
 extern void GetUnknownIcon(char *name);
 extern char *ExpandFilename(char *name);
 extern void GetColor(int kind, Pixel * what, char *name);
+extern void GetColorAlways(int kind, Pixel * what, char *name);
 extern Cursor NoCursor(void);
 extern Image *GetImage(char *name, int w, int h, int pad, ColorPair cp);
 extern void Draw3DBorder(Drawable w, int x, int y, int width, int height, int bw, ColorPair cp, int state, int fill, int forcebw);

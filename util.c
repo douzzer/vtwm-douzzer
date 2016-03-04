@@ -604,15 +604,23 @@ LocateStandardColormaps(void)
   return;
 }
 
+
+
+/* Call GetColor if Scr->FirstTime. */
 void
 GetColor(int kind, Pixel * what, char *name)
+{
+  if (Scr->FirstTime)
+    GetColorAlways(kind, what, name);
+}
+
+
+void
+GetColorAlways(int kind, Pixel * what, char *name)
 {
   XColor color, junkcolor;
   Status stat = 0;
   Colormap cmap = Scr->TwmRoot.cmaps.cwins[0]->colormap->c;
-
-  if (!Scr->FirstTime)
-    return;
 
   if (Scr->Monochrome != kind)
     return;
@@ -695,7 +703,6 @@ GetShadeColors(ColorPair * cp)
 {
   XColor xcol;
   Colormap cmap = Scr->TwmRoot.cmaps.cwins[0]->colormap->c;
-  int save;
   float clearfactor;
   float darkfactor;
   char clearcol[32], darkcol[32];
@@ -713,11 +720,8 @@ GetShadeColors(ColorPair * cp)
 	  (unsigned short)(xcol.red * darkfactor),
 	  (unsigned short)(xcol.green * darkfactor), (unsigned short)(xcol.blue * darkfactor));
 
-  save = Scr->FirstTime;
-  Scr->FirstTime = True;
-  GetColor(Scr->Monochrome, &cp->shadc, clearcol);
-  GetColor(Scr->Monochrome, &cp->shadd, darkcol);
-  Scr->FirstTime = save;
+  GetColorAlways(Scr->Monochrome, &cp->shadc, clearcol);
+  GetColorAlways(Scr->Monochrome, &cp->shadd, darkcol);
 }
 
 /*

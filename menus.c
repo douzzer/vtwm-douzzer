@@ -1082,18 +1082,12 @@ AddToMenu(MenuRoot * menu, char *item, char *action, MenuRoot * sub, int func, c
   tmp->user_colors = FALSE;
   if (Scr->Monochrome == COLOR && fore != NULL)
   {
-    int save;
-
-    save = Scr->FirstTime;
-    Scr->FirstTime = TRUE;
-
-    GetColor(COLOR, &tmp->normal.fore, fore);
-    GetColor(COLOR, &tmp->normal.back, back);
+    GetColorAlways(COLOR, &tmp->normal.fore, fore);
+    GetColorAlways(COLOR, &tmp->normal.back, back);
 
     if (!Scr->BeNiceToColormap)
       GetShadeColors(&tmp->normal);
 
-    Scr->FirstTime = save;
     tmp->user_colors = TRUE;
   }
   if (sub != NULL)
@@ -1251,30 +1245,22 @@ MakeMenu(MenuRoot * mr)
   {
     XColor xcol;
     char colname[32];
-    short save;
 
     xcol.pixel = Scr->MenuC.back;
     XQueryColor(dpy, cmap, &xcol);
     sprintf(colname, "#%04x%04x%04x", 5 * (xcol.red / 6), 5 * (xcol.green / 6), 5 * (xcol.blue / 6));
-    save = Scr->FirstTime;
-    Scr->FirstTime = True;
-    GetColor(Scr->Monochrome, &mr->highlight.back, colname);
-    Scr->FirstTime = save;
+    GetColorAlways(Scr->Monochrome, &mr->highlight.back, colname);
   }
 
   if (Scr->MenuBevelWidth > 0 && (Scr->Monochrome == COLOR) && (mr->highlight.fore == UNUSED_PIXEL))
   {
     XColor xcol;
     char colname[32];
-    short save;
 
     xcol.pixel = Scr->MenuC.fore;
     XQueryColor(dpy, cmap, &xcol);
     sprintf(colname, "#%04x%04x%04x", 5 * (xcol.red / 6), 5 * (xcol.green / 6), 5 * (xcol.blue / 6));
-    save = Scr->FirstTime;
-    Scr->FirstTime = True;
-    GetColor(Scr->Monochrome, &mr->highlight.fore, colname);
-    Scr->FirstTime = save;
+    GetColorAlways(Scr->Monochrome, &mr->highlight.fore, colname);
   }
   if (Scr->MenuBevelWidth > 0 && !Scr->BeNiceToColormap)
     GetShadeColors(&mr->highlight);
