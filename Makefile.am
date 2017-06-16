@@ -27,7 +27,7 @@ doc_cflags=-DDOC_CFLAGS="\"$(subst \,\\\,$(pre_vtwm_CFLAGS))\""
 
 vtwm_CFLAGS = $(pre_vtwm_CFLAGS) $(doc_cflags)
 
-vtwm_LDADD = $(VTWM_LIBS) $(xpm_LIBS) $(png_LIBS) $(regex_LIBS) $(xft_LIBS) $(xrandr_LIBS) $(xinerama_LIBS)
+vtwm_LDADD = $(VTWM_LIBS) $(xpm_LIBS) $(png_LIBS) $(regex_LIBS) $(xft_LIBS) $(xrandr_LIBS) $(xinerama_LIBS) $(LEXLIB)
 
 nexpm_CFLAGS = $(vtwm_CFLAGS) -Icontrib/nexpm
 nexpm_LDADD = $(vtwm_LDADD)
