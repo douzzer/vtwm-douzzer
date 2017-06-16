@@ -1534,7 +1534,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
    */
   menu->prev = ActiveMenu;
 
-  mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionHintMask;
+  mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionMask;
 
   XGrabPointer(dpy, Scr->Root, True, mask, GrabModeAsync, GrabModeAsync, Scr->Root, Scr->MenuCursor, CurrentTime);
 
