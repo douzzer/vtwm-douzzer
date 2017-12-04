@@ -82,7 +82,7 @@ extern int createSoundFromFunction;
 extern int destroySoundFromFunction;
 #endif
 
-extern Bool PrintErrorMessages;
+extern int PrintErrorMessages;
 
 #define MAX_X_EVENT 256
 event_proc EventHandler[MAX_X_EVENT];	/* event handler jump table */
@@ -927,6 +927,8 @@ HandlePropertyNotify(void)
     if (!I18N_FetchName(dpy, Tmp_win->w, &prop))
       return;
 
+    int icon_name_follows_window_name = (Tmp_win->icon_name && Tmp_win->name && (! strcmp(Tmp_win->icon_name,Tmp_win->name)));
+
     free_window_names(Tmp_win, True, True, False);
     Tmp_win->full_name = (prop) ? strdup(prop) : NoName;
     Tmp_win->name = (prop) ? strdup(prop) : NoName;
@@ -945,8 +947,14 @@ HandlePropertyNotify(void)
      * the same as the window
      *
      * see that the icon name is it's own memory - djhjr - 2/20/99
+     *
+     * also, because Chrome is dumb and only updates the window name
+     * (not the icon name) on change of tab focus, if the icon name
+     * was the same as the window name, then just go ahead and update
+     * the icon name any time the window name changes.
+     * -douzzer 2017-Dec-2
      */
-    if (!strcmp(Tmp_win->icon_name, NoName))
+    if ((icon_name_follows_window_name && strcmp(Tmp_win->icon_name,Tmp_win->name)) || (!strcmp(Tmp_win->icon_name, NoName)))
     {
       free(Tmp_win->icon_name);
       Tmp_win->icon_name = strdup(Tmp_win->name);
@@ -959,10 +967,14 @@ HandlePropertyNotify(void)
     if (!I18N_GetIconName(dpy, Tmp_win->w, &prop))
       return;
 
-    free_window_names(Tmp_win, False, False, True);
-    Tmp_win->icon_name = (prop) ? strdup(prop) : NoName;
-    if (prop)
+    /* if the icon name already has the ostensibly new value, there's nothing to do. */
+    if (Tmp_win->icon_name && prop && (! strcmp(Tmp_win->icon_name,prop))) {
       free(prop);
+      return;
+    }
+
+    free_window_names(Tmp_win, False, False, True);
+    Tmp_win->icon_name = prop ? : NoName;
 
     RedoIconName();
 
@@ -2639,7 +2651,11 @@ HandleEnterNotify(void)
    */
   if (UnHighLight_win && UnHighLight_win->w != ewp->window && (ewp->window == Scr->Root || ewp->mode != NotifyGrab))
   {
-    SetBorder(UnHighLight_win, False);	/* application window */
+#ifdef TWM_USE_SLOPPYFOCUS
+    if ((SloppyFocus == FALSE) || ((ewp->window != Scr->Root) && (UnHighLight_win != Tmp_win) && (! (Tmp_win && Tmp_win->iconmgrp))))
+#endif
+      SetBorder(UnHighLight_win, False);	/* application window */
+
     if (UnHighLight_win->list && UnHighLight_win->list->w.win != ewp->window)
       NotActiveIconManager(UnHighLight_win->list);	/* in the icon box */
   }
@@ -3196,10 +3212,6 @@ HandleLeaveNotify(void)
 void
 HandleFocusChange(void)
 {
-#if defined DEBUG_STOLENFOCUS
-  extern Bool PrintErrorMessages;
-#endif
-
   if (Tmp_win == NULL)
   {
     if (Event.xfocus.detail == NotifyDetailNone && Event.xfocus.type == FocusIn)
@@ -3278,7 +3290,7 @@ HandleFocusChange(void)
 		    SendTakeFocusMessage(Focus, lastTimestamp);
 		}
 #if defined DEBUG_STOLENFOCUS
-		if (PrintErrorMessages == True)
+		if (PrintErrorMessages)
 		{
 		  if (stamp1 != stamp0)
 		    fprintf(stderr, "HandleFocusChange(1,s=%lu,F=%x,C=%lx{%d,%d}): From '%s' (w=0x0%lx,f=%x) to '%s' (w=0x0%lx,f=%x), %d. attempt to return (%ld milliseconds later).\n", Event.xfocus.serial, ((Scr->TitleFocus==TRUE?512:256)|(SloppyFocus==TRUE?32:16)|(FocusRoot==TRUE?2:1)), (long)JunkChild, HotX, HotY, (Focus?Focus->name:"NULL"), (long)(Focus?Focus->w:None), (Focus?(((Focus->protocols&DoesWmTakeFocus)?32:16)|((!Focus->wmhints||((Focus->wmhints->flags&InputHint)&&Focus->wmhints->input))?2:1)):0), Tmp_win->name, (long)(Tmp_win->w), (Tmp_win?(((Tmp_win->protocols&DoesWmTakeFocus)?32:16)|((!Tmp_win->wmhints||((Tmp_win->wmhints->flags&InputHint)&&Tmp_win->wmhints->input))?2:1)):0), attempts, (stamp1-stamp0));
@@ -3292,7 +3304,7 @@ HandleFocusChange(void)
 	      }
 	      /* focus recovery interval is over; give up, let focus go: */
 #if defined DEBUG_STOLENFOCUS
-	      if (PrintErrorMessages == True)
+	      if (PrintErrorMessages)
 		fprintf(stderr, "HandleFocusChange(2,s=%lu,F=%x): From '%s' (w=0x0%lx,f=%x) to '%s' (w=0x0%lx,f=%x), giving away (%ld milliseconds later).\n", Event.xfocus.serial, ((Scr->TitleFocus==TRUE?512:256)|(SloppyFocus==TRUE?32:16)|(FocusRoot==TRUE?2:1)), (Focus?Focus->name:"NULL"), (long)(Focus?Focus->w:None), (Focus?(((Focus->protocols&DoesWmTakeFocus)?32:16)|((!Focus->wmhints||((Focus->wmhints->flags&InputHint)&&Focus->wmhints->input))?2:1)):0), Tmp_win->name, (long)(Tmp_win->w), (Tmp_win?(((Tmp_win->protocols&DoesWmTakeFocus)?32:16)|((!Tmp_win->wmhints||((Tmp_win->wmhints->flags&InputHint)&&Tmp_win->wmhints->input))?2:1)):0), (stamp1-stamp0));
 #endif
 	    }

@@ -39,6 +39,7 @@ typedef struct TwmDoor
   int width, height;		/* size */
 
   int goto_x, goto_y;		/* destination */
+  char *goto_exec;		/* or something to f.exec */
 
   XClassHint *class;		/* name and class of this door */
 

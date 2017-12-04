@@ -86,7 +86,7 @@ extern char *defTwmrc[];	/* default bindings */
 #ifndef NO_M4_SUPPORT
 #define Resolution(pixels, mm) ((((pixels) * 100000 / (mm)) + 50) / 100)
 #define M4_MAXDIGITS 21		/* greater than the number of digits in a long int */
-extern Bool PrintErrorMessages;
+extern int PrintErrorMessages;
 static char *make_m4_cmdline(char *display_name, char *cp, char *m4_option);
 #endif
 

@@ -96,6 +96,8 @@ in this Software without prior written authorization from The Open Group.
 #define ZOOMSLEEP 50000		/* arbitrary, but pleasing, msec value */
 #endif
 
+extern int PrintErrorMessages;
+
 /*
  * All instances of Scr->TitleBevelWidth and Scr->BorderBevelWidth
  * were a hard value of 2 - djhjr - 4/29/98
@@ -878,8 +880,10 @@ GetFont(MyFont * font)
     if (basename2 != ((basename3) ? Scr->DefaultFont.name : font->name))
       free(basename2);
 
-    for (i = 0; i < missing_charset_count_return; i++)
-      fprintf(stderr, "%s: font for charset %s is lacking\n", ProgramName, missing_charset_list_return[i]);
+    if (PrintErrorMessages > 1) {
+      for (i = 0; i < missing_charset_count_return; i++)
+	fprintf(stderr, "%s: font for charset %s is lacking\n", ProgramName, missing_charset_list_return[i]);
+    }
 
     font_extents = XExtentsOfFontSet(font->fontset);
     fnum = XFontsOfFontSet(font->fontset, &xfonts, &font_names);
@@ -2894,7 +2898,6 @@ ComputeTiledAreaBoundingBox (struct ScreenInfo *scr)
 int
 GetXineramaTilesGeometries (struct ScreenInfo *scr)
 {
-  extern Bool PrintErrorMessages;
   XineramaScreenInfo *si;
   int r, i;
 

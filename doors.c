@@ -20,14 +20,16 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "doors.h"
 #include "screen.h"
 #include "desktop.h"
 #include "add_window.h"
 #include "prototypes.h"
+#include "parse.h" /* for F_ENTERDOOR */
 
 extern void SetMapStateProp(TwmWindow * tmp_win, int state);
-extern TwmDoor *door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy);
+extern TwmDoor *door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec);
 extern void HandleExpose(void);
 extern void SetupWindow(TwmWindow * tmp_win, int x, int y, int w, int h, int bw);
 
@@ -97,6 +99,12 @@ door_add(char *name, char *position, char *destination)
   else
     ph = -1;
 
+  char *dexec = 0;
+  if ((*destination == '!') || isalpha(*destination)) {
+    dexec = destination;
+    dx = dy = 0;
+  } else {
+
   JunkMask = XParseGeometry(destination, &JunkX, &JunkY, &JunkWidth, &JunkHeight);
   if ((JunkMask & (XValue | YValue)) != (XValue | YValue))
   {
@@ -113,16 +121,27 @@ door_add(char *name, char *position, char *destination)
   dx = JunkX;
   dy = JunkY;
 
-  return (door_add_internal(name, px, py, pw, ph, dx, dy));
+  }
+
+  return (door_add_internal(name, px, py, pw, ph, dx, dy, dexec));
 }
 
 TwmDoor *
-door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy)
+door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec)
 {
   TwmDoor *new;
 
   new = (TwmDoor *) malloc(sizeof(TwmDoor));
+  if (! new) {
+    perror("malloc");
+    return 0;
+  }
   new->name = strdup(name);
+  if (! new->name) {
+    perror("malloc");
+    free(new);
+    return 0;
+  }
 
   /* this for getting colors */
   new->class = XAllocClassHint();
@@ -135,6 +154,16 @@ door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy)
   new->height = ph;
   new->goto_x = dx;
   new->goto_y = dy;
+  if (dexec) {
+    new->goto_exec = strdup(dexec);
+    if (! new->goto_exec) {
+      free(new->name);
+      free(new);
+      perror("malloc");
+      return 0;
+    }
+  } else
+    new->goto_exec = 0;
 
   /* link into the list */
   new->prev = NULL;
@@ -251,8 +280,10 @@ door_open_all(void)
  * go into a door
  */
 void
-door_enter(Window w, TwmDoor * d)
+door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
 {
+  Window w = tmp_win->w;
+
   int snapon;			/* doors override real screen snapping - djhjr - 2/5/99 */
 
   if (!d)
@@ -260,6 +291,61 @@ door_enter(Window w, TwmDoor * d)
     if (XFindContext(dpy, w, DoorContext, (caddr_t *) & d) == XCNOENT)
       /* not a door ! */
       return;
+
+  if (d->goto_exec) {
+
+    if (*d->goto_exec == '!') {
+
+      /* f.exec code adapted from menus.c ExecuteFunction() F_EXEC case. */
+      ScreenInfo *scr;
+
+      if (FocusRoot != TRUE)
+	/*
+	 * f.focus / f.sloppyfocus:  Execute external program
+	 * on the screen where the mouse is and not where
+	 * the current X11-event occurred.  (The XGrabPointer()
+	 * above should not 'confine_to' the mouse onto that
+	 * screen as well.)
+	 */
+	scr = FindPointerScreenInfo();
+      else
+	scr = Scr;
+
+      //    PopDownMenu();
+      if (!scr->NoGrabServer)
+	{
+	  XUngrabServer(dpy);
+	  XSync(dpy, False);
+	}
+
+      Execute(scr, d->goto_exec+1);
+
+    } else {
+      /* f.function code adapted from menus.c ExecuteFunction() F_FUNCTION case. */
+
+      MenuRoot *mroot;
+      MenuItem *mitem;
+      Cursor cursor;
+
+      if ((mroot = FindMenuRoot(d->goto_exec)) == NULL) {
+	  fprintf(stderr, "%s: couldn't find function \"%s\"\n", ProgramName, d->goto_exec);
+	  return;
+      }
+
+      if ((cursor = NeedToDefer(mroot)) != None && DeferExecution(C_DOOR, F_ENTERDOOR, cursor))
+	return;
+      else {
+	for (mitem = mroot->first; mitem != NULL; mitem = mitem->next)
+	  {
+	    if (!ExecuteFunction(mitem->func, mitem->action, w, tmp_win, eventp, C_DOOR, 0 /* pulldown */))
+	      break;
+	  }
+      }
+
+    }
+
+    return;
+  }
 
   /* go to it */
   snapon = (int)Scr->snapRealScreen;
@@ -311,6 +397,8 @@ door_delete(Window w, TwmDoor * d)
   free(d->class->res_class);
   XFree(d->class);
   free(d->name);
+  if (d->goto_exec)
+    free(d->goto_exec);
   free(d);
 }
 
@@ -325,7 +413,7 @@ door_new(void)
 
   sprintf(name, "+%d+%d", Scr->VirtualDesktopX, Scr->VirtualDesktopY);
 
-  d = door_add_internal(name, -1, -1, -1, -1, Scr->VirtualDesktopX, Scr->VirtualDesktopY);
+  d = door_add_internal(name, -1, -1, -1, -1, Scr->VirtualDesktopX, Scr->VirtualDesktopY, 0);
 
   door_open(d);
 }

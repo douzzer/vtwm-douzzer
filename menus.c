@@ -51,6 +51,7 @@
 #include <process.h>
 #endif
 #include <ctype.h>
+#include <sys/wait.h>
 #include "twm.h"
 #include "gc.h"
 #include "menus.h"
@@ -98,7 +99,6 @@ static void SendSaveYourselfMessage(TwmWindow * tmp, Time timestamp);
 static void WarpClass(int next, TwmWindow * t, char *class);
 static void WarpToScreen(ScreenInfo * scr, int n, int inc);
 static void WarpScreenToWindow(TwmWindow * t);
-static Cursor NeedToDefer(MenuRoot * root);
 static int MatchWinName(char *action, TwmWindow * t);
 
 int ConstMove = FALSE;		/* constrained move variables */
@@ -3759,15 +3759,31 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
        * move a percentage in a particular direction
        */
     case F_PANDOWN:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(0, (atoi(action) * Scr->MyDisplayHeight) / 100, NULL, NULL);
       break;
     case F_PANLEFT:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(-((atoi(action) * Scr->MyDisplayWidth) / 100), 0, NULL, NULL);
       break;
     case F_PANRIGHT:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen((atoi(action) * Scr->MyDisplayWidth) / 100, 0, NULL, NULL);
       break;
     case F_PANUP:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(0, -((atoi(action) * Scr->MyDisplayHeight) / 100), NULL, NULL);
       break;
 
@@ -4064,7 +4080,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	TwmDoor *d;
 
 	if (XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & d) != XCNOENT)
-	  door_enter(tmp_win->w, d);
+	  door_enter(tmp_win, d, eventp);
 	break;
       }
 
@@ -4214,7 +4230,7 @@ ReGrab(void)
  ***********************************************************************
  */
 
-static Cursor
+Cursor
 NeedToDefer(MenuRoot * root)
 {
   MenuItem *mitem;

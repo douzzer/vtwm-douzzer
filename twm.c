@@ -91,7 +91,7 @@ ScreenInfo *Scr = NULL;		/* the cur and prev screens */
 int PreviousScreen;		/* last screen that we were on */
 int FirstScreen;		/* TRUE ==> first screen of display */
 Bool PrintPID = False;		/* controls PID file - djhjr - 12/2/01 */
-Bool PrintErrorMessages = False;	/* controls error messages */
+int PrintErrorMessages = 0;	/* controls error messages */
 static int RedirectError;	/* TRUE ==> another window manager running */
 static int CatchRedirectError(Display * dpy, XErrorEvent * event);	/* for settting RedirectError */
 static int TwmErrorHandler(Display * dpy, XErrorEvent * event);	/* for everything else */
@@ -176,6 +176,7 @@ main(int argc, char **argv, char **environ)
   unsigned long valuemask;	/* mask for create windows */
   XSetWindowAttributes attributes;	/* attributes for create windows */
   int numManaged, firstscrn, lastscrn, scrnum;
+  int use_C_locale = 0;
 
 #ifndef NO_M4_SUPPORT
   int m4_preprocess = False;	/* filter the *twmrc file through m4 */
@@ -217,6 +218,9 @@ main(int argc, char **argv, char **environ)
     {
       switch (argv[i][1])
       {
+      case 'c':
+	use_C_locale = 1;
+	continue;
       case 'd':		/* -display display */
 	if (++i >= argc)
 	  goto usage;
@@ -244,7 +248,7 @@ main(int argc, char **argv, char **environ)
 	MultiScreen = FALSE;
 	continue;
       case 'v':		/* -verbose */
-	PrintErrorMessages = True;
+	++PrintErrorMessages;
 	continue;
       case 'V':
 	printf("%s\n", Version);
@@ -257,10 +261,10 @@ main(int argc, char **argv, char **environ)
   usage:
     fprintf(stderr,
 #ifndef NO_M4_SUPPORT
-	    "usage:  %s [-d display] [-f [initfile]] [-m [options]] [-p] [-s] [-v] [-V]\n\n"
+	    "usage:  %s [-c] [-d display] [-f [initfile]] [-m [options]] [-p] [-s] [-v] [-V]\n\n"
 	    "\t-m <OPTION>      -- M4 conditional configuration defintion\n"
 #else
-	    "usage:  %s [-d display] [-f [initfile]] [-p] [-s] [-v] [-V]\n\n"
+	    "usage:  %s [-c] [-d display] [-f [initfile]] [-p] [-s] [-v] [-V]\n\n"
 #endif
 	    "\t-d <display>     -- Use in place of $DISPLAY\n"
 	    "\t-f <path>        -- Init file in place of ~/.vtwmrc\n"
@@ -273,7 +277,7 @@ main(int argc, char **argv, char **environ)
   }
 
   loc = setlocale(LC_ALL, "");
-  if (!loc || !strcmp(loc, "C") || !strcmp(loc, "POSIX") || !XSupportsLocale())
+  if (use_C_locale || !loc || !strcmp(loc, "C") || !strcmp(loc, "POSIX") || !XSupportsLocale())
     use_fontset = False;
   else
     use_fontset = True;
