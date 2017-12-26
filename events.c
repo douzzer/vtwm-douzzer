@@ -2652,7 +2652,7 @@ HandleEnterNotify(void)
   if (UnHighLight_win && UnHighLight_win->w != ewp->window && (ewp->window == Scr->Root || ewp->mode != NotifyGrab))
   {
 #ifdef TWM_USE_SLOPPYFOCUS
-    if ((SloppyFocus == FALSE) || ((ewp->window != Scr->Root) && (UnHighLight_win != Tmp_win) && (! (Tmp_win && Tmp_win->iconmgrp))))
+    if ((SloppyFocus == FALSE) || (! strcmp(UnHighLight_win->class.res_class,VTWM_DOOR_CLASS)) || ((ewp->window != Scr->Root) && (UnHighLight_win != Tmp_win) && (! (Tmp_win && Tmp_win->iconmgrp))))
 #endif
       SetBorder(UnHighLight_win, False);	/* application window */
 
