@@ -617,7 +617,7 @@ GetColor(int kind, Pixel * what, char *name)
 }
 
 
-void
+int
 GetColorAlways(int kind, Pixel * what, char *name)
 {
   XColor color, junkcolor;
@@ -625,7 +625,7 @@ GetColorAlways(int kind, Pixel * what, char *name)
   Colormap cmap = Scr->TwmRoot.cmaps.cwins[0]->colormap->c;
 
   if (Scr->Monochrome != kind)
-    return;
+    return -1;
 
 #if ( XlibSpecificationRelease < 5 )
   if (!((name[0] == '#')
@@ -646,7 +646,7 @@ GetColorAlways(int kind, Pixel * what, char *name)
     if (!stat)
     {
       fprintf(stderr, "%s:  invalid color name \"%s\"\n", ProgramName, name);
-      return;
+      return -1;
     }
 
     /*
@@ -693,11 +693,12 @@ GetColorAlways(int kind, Pixel * what, char *name)
     else
     {
       fprintf(stderr, "%s:  unable to allocate color \"%s\"\n", ProgramName, name);
-      return;
+      return -1;
     }
   }
 
   *what = color.pixel;
+  return 0;
 }
 
 void

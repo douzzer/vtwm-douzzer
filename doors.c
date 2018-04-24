@@ -423,7 +423,7 @@ door_new(void)
  *
  * adapted from VTWM-5.2b - djhjr - 4/20/98
  */
-void
+int
 door_paste_name(Window w, TwmDoor * d)
 {
   int width, height, count;
@@ -435,12 +435,17 @@ door_paste_name(Window w, TwmDoor * d)
 
   if (!d)
     if (XFindContext(dpy, w, DoorContext, (caddr_t *) & d) == XCNOENT)
-      return;
+      return -1;
 
   if (!(ptr = XFetchBytes(dpy, &count)) || count == 0)
-    return;
+    return -1;
   if (count > 128)
     count = 128;
+
+  if ((! strncmp(ptr,d->name,count)) && (strlen(d->name) == count)) {
+    XFree(ptr);
+    return -1;
+  }
 
   if (d->name)
     d->name = realloc(d->name, count + 1);
@@ -463,6 +468,8 @@ door_paste_name(Window w, TwmDoor * d)
   SetupWindow(d->twin, d->twin->frame_x, d->twin->frame_y, width + 2 * bw, height + d->twin->title_height + 2 * bw, -1);
 
   HandleExpose();
+
+  return 0;
 }
 
 

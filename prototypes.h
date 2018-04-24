@@ -13,7 +13,7 @@ extern void MoveOutline(Window root, int x, int y, int width, int height, int bw
 extern void GetUnknownIcon(char *name);
 extern char *ExpandFilename(char *name);
 extern void GetColor(int kind, Pixel * what, char *name);
-extern void GetColorAlways(int kind, Pixel * what, char *name);
+extern int GetColorAlways(int kind, Pixel * what, char *name);
 extern Cursor NoCursor(void);
 extern Image *GetImage(char *name, int w, int h, int pad, ColorPair cp);
 extern void Draw3DBorder(Drawable w, int x, int y, int width, int height, int bw, ColorPair cp, int state, int fill, int forcebw);
@@ -219,7 +219,7 @@ extern void door_open_all(void);
 extern void door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp);
 extern void door_new(void);
 extern void door_delete(Window w, TwmDoor * d);
-extern void door_paste_name(Window w, TwmDoor * d);
+extern int door_paste_name(Window w, TwmDoor * d);
 extern void CreateDesktopDisplay(void);
 extern void UpdateDesktop(TwmWindow * tmp_win);
 extern void MoveResizeDesktop(TwmWindow * tmp_win, int noraise);
