@@ -38,6 +38,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "twm.h"
 #include <X11/Xatom.h>
 #ifndef NO_XPM_SUPPORT
@@ -457,9 +458,9 @@ AddWindow(Window w, int iconm, IconMgr * iconp)
   if (Scr->StormPositioning && HandlingEvents == TRUE &&
       !(tmp_win->hints.flags & USPosition) && (tmp_win->group != tmp_win->w))
   {
-    static lastwingroup = 0;
-    static lastwin = 0;
-    static lasttime = 0;
+    static int lastwingroup = 0;
+    static int lastwin = 0;
+    static int lasttime = 0;
     int curtime = time(NULL);
     Window junk;
 
