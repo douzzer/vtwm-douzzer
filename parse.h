@@ -184,6 +184,10 @@
 #define F_PANELGEOMETRYMOVE	143
 #define F_RESIZETO		144
 
+#define F_CUTNOLF		145	/* string */
+#define F_NAMEOTHERDOOR		146	/* string */
+#define F_COLOROTHERDOOR	147	/* string */
+
 #define D_NORTH			1
 #define D_SOUTH			2
 #define D_EAST			3

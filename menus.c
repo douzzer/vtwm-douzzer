@@ -1904,6 +1904,8 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
   case F_RAISELOWER:
   case F_NAIL:
   case F_NAMEDOOR:
+  case F_NAMEOTHERDOOR:
+  case F_COLOROTHERDOOR:
   case F_BOTTOMZOOM:
   case F_FULLZOOM:
   case F_HORIZOOM:
@@ -3394,6 +3396,11 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
       XStoreBytes(dpy, tmp, strlen(tmp));
       break;
 
+    case F_CUTNOLF:
+      strcpy(tmp, action);
+      XStoreBytes(dpy, tmp, strlen(tmp));
+      break;
+
     case F_CUTFILE:
       ptr = XFetchBytes(dpy, &count);
       if (ptr)
@@ -4118,6 +4125,99 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	if (XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & d) != XCNOENT)
 	  door_paste_name(tmp_win->w, d);
+	break;
+      }
+
+    case F_NAMEOTHERDOOR:
+      {
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,action))
+	    break;
+	if (d) {
+	  if (door_paste_name(d->twin->w, d) == 0)
+	    RedoDoorName(d->twin, d);
+	}
+	break;
+      }
+
+    case F_COLOROTHERDOOR:
+      {
+	if (Scr->Monochrome != COLOR)
+	  break;
+
+	char doorname[32] = {}, fgcolorname[32] = {}, bgcolorname[32] = {}, bordercolorname[32] = {};
+
+	/* "doorname;fgcolor;bgcolor;bordercolor" */
+	if (sscanf(action,"%31s %31s %31s %31s", doorname, fgcolorname, bgcolorname, bordercolorname) < 2) {
+	  fprintf(stderr, "%s:  bad door color scheme \"%s\"\n", ProgramName, action);
+	  break;
+	}
+
+	Pixel fgcolor, bgcolor, bordercolor;
+
+	if (fgcolorname[0] && strcmp(fgcolorname,"-")) {
+	  if (GetColorAlways(COLOR, &fgcolor, fgcolorname) < 0)
+	    break;
+	}
+	if (bgcolorname[0] && strcmp(bgcolorname,"-")) {
+	  if (GetColorAlways(COLOR, &bgcolor, bgcolorname) < 0)
+	    break;
+	}
+	if (bordercolorname[0] && strcmp(bordercolorname,"-")) {
+	  if (GetColorAlways(COLOR, &bordercolor, bordercolorname) < 0)
+	    break;
+	}
+
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,doorname))
+	    break;
+	if (! d)
+	  break;
+
+	int nchanges = 0;
+
+	if (fgcolorname[0] && strcmp(fgcolorname,"-")) {
+	  if (d->colors.fore != fgcolor) {
+	    d->colors.fore = fgcolor;
+	    ++nchanges;
+	  }
+	}
+	if (bgcolorname[0] && strcmp(bgcolorname,"-")) {
+	  if (d->colors.back != bgcolor) {
+	    d->colors.back = bgcolor;
+	    XSetWindowBackground(dpy, d->w.win, d->colors.back);
+	    ++nchanges;
+	  }
+	}
+	if (bordercolorname[0] && strcmp(bordercolorname,"-")) {
+	  if (d->twin->border.back != bordercolor) {
+	    d->twin->border.back = bordercolor;
+	    ++nchanges;
+	  }
+	}
+	if (! nchanges)
+	  break;
+
+	RedoDoorName(d->twin, d);
+	XUnmapWindow(dpy, d->w.win);
+	XMapWindow(dpy, d->w.win);
+
+#if 0
+	/* stuff that wound up not being needed for this: */
+// GetColorAlways(COLOR, &d->twin->border.fore, "black");
+// GetColorAlways(COLOR, &d->twin->border.back, "white");
+// GetColorAlways(COLOR, &d->twin->border_tile.fore, "black");
+// GetColorAlways(COLOR, &d->twin->border_tile.back, "white");
+//XSetWindowBackground(dpy, d->twin->w, d->colors.back);
+
+//XUnmapWindow(dpy, d->twin->w);
+//XMapWindow(dpy, d->twin->w);
+//XSync(dpy, False);
+
+#endif /* 0 */
+
 	break;
       }
 
