@@ -143,8 +143,8 @@ CreateIconManagers(void)
 
     p->w = XCreateSimpleWindow(dpy, Scr->Root, JunkX, JunkY, p->width, p->height, 0, Scr->Black, background);
 
-    sprintf(str, "%s Icon Manager", p->name);
-    sprintf(str1, "%s Icons", p->name);
+    snprintf(str, sizeof str, "%s Icon Manager", p->name);
+    snprintf(str1, sizeof str1, "%s Icons", p->name);
     if (p->icon_name)
       icon_name = p->icon_name;
     else

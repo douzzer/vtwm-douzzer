@@ -2284,7 +2284,7 @@ ReallyGetImage(char *name, int w, int h, int pad, ColorPair cp)
 
   if (name[0] == ':')
   {
-    sprintf(fullname, "%s.%dx%d.%Xx%X.%d", name, w, h, (int)cp.fore, (int)cp.back, Scr->screen);
+    snprintf(fullname, sizeof fullname, "%s.%dx%d.%Xx%X.%d", name, w, h, (int)cp.fore, (int)cp.back, Scr->screen);
     if ((image = (Image *) LookInNameList(*list, fullname)) == NULL)
     {
       for (i = 0; i < sizeof(pmtab) / sizeof(pmtab[0]); i++)
@@ -2320,7 +2320,7 @@ ReallyGetImage(char *name, int w, int h, int pad, ColorPair cp)
     /*
      * Need screen number in fullname since screens may have different GCs.
      */
-    sprintf(fullname, "%s.%Xx%X.%d", name, (int)cp.fore, (int)cp.back, (int)Scr->screen);
+    snprintf(fullname, sizeof fullname, "%s.%Xx%X.%d", name, (int)cp.fore, (int)cp.back, (int)Scr->screen);
     if ((image = (Image *) LookInNameList(*list, fullname)) == NULL)
     {
       if ((image = LoadBitmapImage(name, cp)) == NULL)
@@ -2936,7 +2936,7 @@ GetXineramaTilesGeometries (struct ScreenInfo *scr)
 #endif
 	  if (scr->tile_names != NULL) {
 	    char name[8+6+1];
-	    sprintf (name, "Xinerama%d", (si[i].screen_number%1000000));
+	    snprintf (name, sizeof name, "Xinerama%d", (si[i].screen_number%1000000));
 	    name[sizeof(name)-1] = '\0';
 	    scr->tile_names[i] = strdup (name);
 	  }
