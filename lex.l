@@ -80,7 +80,7 @@ number				[0-9]+
 "-"				{ return MINUS; }
 "|"				{ return OR; }
 
-[a-zA-Z\.]+			{ int token = parse_keyword (yytext,
+[a-zA-Z\._]+|f\.[a-zA-Z\._]+[a-zA-Z\._0-9]+	{ int token = parse_keyword (yytext,
 							     &yylval.num);
 				  if (token == ERRORTOKEN) {
 				      twmrc_error_prefix();

@@ -224,6 +224,8 @@ typedef struct _TitleButton
   int dstx, dsty;		/* to where to start copying */
   int func;			/* function to execute */
   char *action;			/* optional action arg */
+  char *action2;		/* optional action arg */
+  char *action3;		/* optional action arg */
   struct MenuRoot *menuroot;	/* menu to pop on F_MENU */
   Bool rightside;		/* t: on right, f: on left */
 } TitleButton;

@@ -59,6 +59,8 @@ typedef struct MenuItem
   struct MenuRoot *root;	/* back pointer to my MenuRoot */
   char *item;			/* the character string displayed */
   char *action;			/* action to be performed */
+  char *action2;		/* optional arg 1 */
+  char *action3;		/* optional arg 2 */
 
   ColorPair normal;		/* unhiglight colors */
   ColorPair highlight;		/* highlight colors */
@@ -136,6 +138,8 @@ typedef struct FuncKey
   int func;			/* function to perform */
   char *win_name;		/* window name (if any) */
   char *action;			/* action string (if any) */
+  char *action2;		/* action string (if any) */
+  char *action3;		/* action string (if any) */
 } FuncKey;
 
 extern int RootFunction;

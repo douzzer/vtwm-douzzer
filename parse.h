@@ -185,8 +185,13 @@
 #define F_RESIZETO		144
 
 #define F_CUTNOLF		145	/* string */
-#define F_NAMEOTHERDOOR		146	/* string */
-#define F_COLOROTHERDOOR	147	/* string */
+#define F_CUTFILE2		146	/* string */
+#define F_NAMEOTHERDOOR		147	/* string */
+#define F_NAMEOTHERDOOR2	148	/* string string */
+#define F_COLOROTHERDOOR	149	/* string string */
+#define F_FUNCTIONIFCLIPEQ	150	/* string string */
+#define F_FUNCTIONIFCLIPEQELSE	151	/* string string string */
+#define F_CLIPOTHERDOORNAME	152
 
 #define D_NORTH			1
 #define D_SOUTH			2

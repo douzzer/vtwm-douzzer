@@ -979,7 +979,7 @@ main(int argc, char **argv, char **environ)
 #define VTWM_PROFILE "VTWM Profile"
   if (FindMenuRoot(VTWM_PROFILE))
   {
-    ExecuteFunction(F_FUNCTION, VTWM_PROFILE, Event.xany.window, &Scr->TwmRoot, &Event, C_NO_CONTEXT, FALSE);
+    ExecuteFunction(F_FUNCTION, VTWM_PROFILE, 0, 0, Event.xany.window, &Scr->TwmRoot, &Event, C_NO_CONTEXT, FALSE);
   }
 
 #ifdef SOUND_SUPPORT
@@ -995,6 +995,10 @@ main(int argc, char **argv, char **environ)
     int fd, err = 0;
     char buf[10], *fn = malloc(HomeLen + strlen(PidName) + 2);
 
+    if (! fn) {
+      perror("malloc");
+      exit(1);
+    }
     /* removed group and other permissions - djhjr - 10/20/02 */
     sprintf(fn, "%s/%s", Home, PidName);
     if ((fd = open(fn, O_WRONLY | O_EXCL | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1)
@@ -1517,6 +1521,10 @@ delete_pidfile(void)
   if (PrintPID)
   {
     fn = malloc(HomeLen + strlen(PidName) + 2);
+    if (! fn) {
+      perror("malloc");
+      return;
+    }
     sprintf(fn, "%s/%s", Home, PidName);
     unlink(fn);
     free(fn);

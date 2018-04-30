@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 #include "doors.h"
 #include "screen.h"
 #include "desktop.h"
@@ -337,7 +338,7 @@ door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
       else {
 	for (mitem = mroot->first; mitem != NULL; mitem = mitem->next)
 	  {
-	    if (!ExecuteFunction(mitem->func, mitem->action, w, tmp_win, eventp, C_DOOR, 0 /* pulldown */))
+	    if (! ExecuteFunction(mitem->func, mitem->action, mitem->action2, mitem->action3, w, tmp_win, eventp, C_DOOR, 0 /* pulldown */))
 	      break;
 	  }
       }
@@ -419,15 +420,14 @@ door_new(void)
 }
 
 /*
- * rename a door from cut buffer 0
+ * rename a door
  *
  * adapted from VTWM-5.2b - djhjr - 4/20/98
  */
 int
-door_paste_name(Window w, TwmDoor * d)
+door_set_name(Window w, TwmDoor * d, const char *ptr, int count)
 {
-  int width, height, count;
-  char *ptr;
+  int width, height;
   int bw = 0;
 
   if (Scr->BorderBevelWidth)
@@ -437,23 +437,23 @@ door_paste_name(Window w, TwmDoor * d)
     if (XFindContext(dpy, w, DoorContext, (caddr_t *) & d) == XCNOENT)
       return -1;
 
-  if (!(ptr = XFetchBytes(dpy, &count)) || count == 0)
-    return -1;
   if (count > 128)
     count = 128;
 
-  if ((! strncmp(ptr,d->name,count)) && (strlen(d->name) == count)) {
-    XFree(ptr);
-    return -1;
-  }
+  if ((! strncmp(ptr,d->name,count)) && (strlen(d->name) == count))
+    return 0;
 
   if (d->name)
     d->name = realloc(d->name, count + 1);
   else
     d->name = malloc(count + 1);
 
+  if (! d->name) {
+    fprintf(stderr,"%s: malloc: %s\n",ProgramName,strerror(errno));
+    return -1;
+  }
+
   sprintf(d->name, "%*s", count, ptr);
-  XFree(ptr);
 
   XClearWindow(dpy, d->w.win);
 
@@ -470,6 +470,28 @@ door_paste_name(Window w, TwmDoor * d)
   HandleExpose();
 
   return 0;
+}
+
+
+/*
+ * rename a door from cut buffer 0
+ *
+ * adapted from VTWM-5.2b - djhjr - 4/20/98
+ */
+int
+door_paste_name(Window w, TwmDoor * d)
+{
+  int count;
+  char *ptr;
+
+  if (!(ptr = XFetchBytes(dpy, &count)) || count == 0)
+    return -1;
+
+  int ret = door_set_name(w, d, ptr, count);
+
+  XFree(ptr);
+
+  return ret;
 }
 
 

@@ -62,6 +62,8 @@
 #endif
 
 static char *Action = "";
+static char *Action2 = 0;
+static char *Action3 = 0;
 static char *Name = "";
 static MenuRoot	*root, *pull = NULL;
 
@@ -121,7 +123,7 @@ extern int rclineno;
 %token <num> OPAQUE_MOVE NO_OPAQUE_MOVE OPAQUE_RESIZE NO_OPAQUE_RESIZE
 %token <num> START_ICONIFIED NO_TITLE_HILITE TITLE_HILITE
 %token <num> MOVE RESIZE WAIT SELECT KILL LEFT_TITLEBUTTON RIGHT_TITLEBUTTON
-%token <num> NUMBER KEYWORD MKEYWORD NKEYWORD CKEYWORD CLKEYWORD FKEYWORD FSKEYWORD
+%token <num> NUMBER KEYWORD MKEYWORD NKEYWORD CKEYWORD CLKEYWORD FKEYWORD FSKEYWORD FS2KEYWORD FS3KEYWORD
 %token <num> SNKEYWORD SKEYWORD DKEYWORD JKEYWORD WINDOW_RING NO_WINDOW_RING WARP_CURSOR WARP_NEXT
 %token <num> ERRORTOKEN NO_STACKMODE NAILEDDOWN IMMUTABLE VIRTUALDESKTOP NO_SHOW_IN_DISPLAY
 %token <num> NO_SHOW_IN_TWMWINDOWS
@@ -242,10 +244,12 @@ stmt		: error
 					    {
 					      root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					      Scr->Mouse[MOUSELOC($1,C_ROOT,0)].item =
-						  AddToMenu(root,"x",Action,
+						AddToMenu(root,"x",Action,Action2,Action3,
 							    NULL,$2,NULLSTR,NULLSTR);
 					    }
 					    Action = "";
+					    Action2 = 0;
+					    Action3 = 0;
 					    pull = NULL;
 					  }
 					}
@@ -337,18 +341,22 @@ stmt		: error
 					  {
 					    root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					    Scr->DefaultFunction.item =
-						AddToMenu(root,"x",Action,
+					      AddToMenu(root,"x",Action,Action2,Action3,
 							  NULL,$2, NULLSTR, NULLSTR);
 					  }
 					  Action = "";
+					  Action2 = 0;
+					  Action3 = 0;
 					  pull = NULL;
 					}
 		| WINDOW_FUNCTION action { Scr->WindowFunction.func = $2;
 					   root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					   Scr->WindowFunction.item =
-						AddToMenu(root,"x",Action,
+					     AddToMenu(root,"x",Action,Action2,Action3,
 							  NULL,$2, NULLSTR, NULLSTR);
 					   Action = "";
+					   Action2 = 0;
+					   Action3 = 0;
 					   pull = NULL;
 					}
 		| WARP_CURSOR		{ list = &Scr->WarpCursorL; }
@@ -766,9 +774,11 @@ function_entries: /* Empty */
 		| function_entries function_entry
 		;
 
-function_entry	: action		{ AddToMenu(root, "", Action, NULL, $1,
+function_entry	: action		{ AddToMenu(root, "", Action, Action2, Action3, NULL, $1,
 						NULLSTR, NULLSTR);
 					  Action = "";
+					  Action2 = 0;
+					  Action3 = 0;
 					}
 		;
 
@@ -784,8 +794,10 @@ menu_entry	: string action		{
 			    if (lastmenuitem) lastmenuitem->separated = 1;
 			}
 			else {
-			    lastmenuitem = AddToMenu(root, $1, Action, pull, $2, NULLSTR, NULLSTR);
+			  lastmenuitem = AddToMenu(root, $1, Action, Action2, Action3, pull, $2, NULLSTR, NULLSTR);
 			    Action = "";
+			    Action2 = 0;
+			    Action3 = 0;
 			    pull = NULL;
 			}
 		}
@@ -794,8 +806,10 @@ menu_entry	: string action		{
 			    if (lastmenuitem) lastmenuitem->separated = 1;
 			}
 			else {
-			    lastmenuitem = AddToMenu(root, $1, Action, pull, $7, $3, $5);
+			    lastmenuitem = AddToMenu(root, $1, Action, Action2, Action3, pull, $7, $3, $5);
 			    Action = "";
+			    Action2 = 0;
+			    Action3 = 0;
 			    pull = NULL;
 			}
 		}
@@ -866,7 +880,18 @@ action		: FKEYWORD	{ $$ = $1; }
 				    }
 				    break;
 				} /* end switch */
-				   }
+		  }
+		| FS2KEYWORD string string {
+				$$ = $1;
+				Action = $2;
+				Action2 = $3;
+		  }
+		| FS3KEYWORD string string string {
+				$$ = $1;
+				Action = $2;
+				Action2 = $3;
+				Action3 = $4;
+		  }
 		;
 
 
@@ -1127,12 +1152,14 @@ static void GotButton(int butt, int func)
     {
       root = GetRoot(TWM_ROOT, NULLSTR, NULLSTR);
 
-      Scr->Mouse[MOUSELOC(butt,i,mods)].item = AddToMenu(root,"x",Action,
+      Scr->Mouse[MOUSELOC(butt,i,mods)].item = AddToMenu(root,"x",Action,Action2,Action3,
 							 NULL, func, NULLSTR, NULLSTR);
 
     }
   }
   Action = "";
+  Action2 = 0;
+  Action3 = 0;
   pull = NULL;
   cont = 0;
   mods_used |= mods;
@@ -1147,11 +1174,12 @@ static void GotKey(char *key, int func)
   {
     if ((cont & (1 << i)) == 0)
       continue;
-    if (!AddFuncKey(key, i, mods, func, Name, Action))
+    if (!AddFuncKey(key, i, mods, func, Name, Action, Action2, Action3))
       break;
   }
 
   Action = "";
+  Action2 = Action3 = 0;
   pull = NULL;
   cont = 0;
   mods_used |= mods;
@@ -1161,7 +1189,7 @@ static void GotKey(char *key, int func)
 
 static void GotTitleButton (char *bitmapname, int func, Bool rightside)
 {
-  if (!CreateTitleButton (bitmapname, func, Action, pull, rightside, True)) {
+  if (!CreateTitleButton (bitmapname, func, Action, Action2, Action3, pull, rightside, True)) {
     twmrc_error_prefix();
     fprintf (stderr,
 	     "unable to create %s titlebutton \"%s\"\n",
