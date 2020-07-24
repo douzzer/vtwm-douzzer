@@ -5,14 +5,12 @@ manager `vtwm` (Virtual Tab Window Manager) first released in 1990,
 itself a fork of Tom LaStrange's `twm`.
 
 `vtwm-douzzer` is forked from
-(upstream)[https://sourceforge.net/p/vtwm/code/commit_browser] at commit
-7c9610917663835d97ef283c82996e43b514e444 (2017-Jun-15).  See also (the
-project homepage)[http://www.vtwm.org/].
-Thanks to
-Seth Robertson, Callum Gibson, Branden Robinson, and the late David Hawkey, for keeping the vtwm flame alight lo
+[upstream](https://sourceforge.net/p/vtwm/code/commit_browser) at commit
+7c9610917663835d97ef283c82996e43b514e444 (2017-Jun-15).  See also [the project homepage](http://www.vtwm.org/).
+Thanks to Seth Robertson, Callum Gibson, Branden Robinson, and the late David Hawkey, for keeping the vtwm flame alight lo
 these many years, and to Dana Chee and collaborators
-(attending)[http://www.vtwm.org/vtwm-changelog.html] the
-(mysterious birth of `vtwm`)[http://www.vtwm.org/vtwm-family.html].
+[attending](http://www.vtwm.org/vtwm-changelog.html) the
+[mysterious birth of `vtwm`](http://www.vtwm.org/vtwm-family.html).
 More acknowledgements are called out at the end of
 `vtwm.man`.
 
