@@ -143,8 +143,8 @@ CreateIconManagers(void)
 
     p->w = XCreateSimpleWindow(dpy, Scr->Root, JunkX, JunkY, p->width, p->height, 0, Scr->Black, background);
 
-    sprintf(str, "%s Icon Manager", p->name);
-    sprintf(str1, "%s Icons", p->name);
+    snprintf(str, sizeof str, "%s Icon Manager", p->name);
+    snprintf(str1, sizeof str1, "%s Icons", p->name);
     if (p->icon_name)
       icon_name = p->icon_name;
     else
@@ -928,7 +928,9 @@ ComputeIconMgrWindowHeight(IconMgr * ip)
     if (ip->columns > 1)	/* 100*pow(sqrt(1.2), i) for i = 2, 3, 4 */
       h = 144 * Scr->IconManagerFont.height / 100;	/* i = 4 multicolumn */
     else
-      h = 120 * Scr->IconManagerFont.height / 100;	/* i = 2 unicolumn */
+      h = 131 * Scr->IconManagerFont.height / 100;	/* i = 3 unicolumn */
+    if (h < Scr->IconManagerFont.height + 4)
+      h = Scr->IconManagerFont.height + 4;
     h += 2 * Scr->IconMgrBevelWidth;
 #else
     h = Scr->IconManagerFont.height + 2 * Scr->IconMgrBevelWidth + 4;
@@ -942,8 +944,10 @@ ComputeIconMgrWindowHeight(IconMgr * ip)
     if (ip->columns > 1)
       h = 144 * Scr->IconManagerFont.height / 100;
     else
-      h = 120 * Scr->IconManagerFont.height / 100;
+      h = 131 * Scr->IconManagerFont.height / 100;
     h += 4;			/* highlighted border */
+    if (h < Scr->IconManagerFont.height + 10)
+      h = Scr->IconManagerFont.height + 10;
 #else
     h = Scr->IconManagerFont.height + 10;
 #endif

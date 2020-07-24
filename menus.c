@@ -51,6 +51,7 @@
 #include <process.h>
 #endif
 #include <ctype.h>
+#include <sys/wait.h>
 #include "twm.h"
 #include "gc.h"
 #include "menus.h"
@@ -70,7 +71,7 @@
 #include "version.h"
 #include "prototypes.h"
 
-extern char *Action;
+extern char *Action, *Action2, *Action3, *Action4;
 extern int Context;
 extern int ConstrainedMoveTime;
 extern TwmWindow *ButtonWindow, *Tmp_win;
@@ -98,12 +99,13 @@ static void SendSaveYourselfMessage(TwmWindow * tmp, Time timestamp);
 static void WarpClass(int next, TwmWindow * t, char *class);
 static void WarpToScreen(ScreenInfo * scr, int n, int inc);
 static void WarpScreenToWindow(TwmWindow * t);
-static Cursor NeedToDefer(MenuRoot * root);
 static int MatchWinName(char *action, TwmWindow * t);
 
 int ConstMove = FALSE;		/* constrained move variables */
 
-/* for comparison against MoveDelta - djhjr - 9/5/98 */
+/* The location of the most recent poped-up menu.
+ * Used by UpdateMenu to see if the mouse has moved more than MoveDelta
+ * since the menu was mapped. */
 static int MenuOrigX, MenuOrigY;
 
 /* Globals used to keep track of whether the mouse has moved during
@@ -121,7 +123,7 @@ static struct
 } MenuOrigins[MAXMENUDEPTH];
 static Cursor LastCursor;
 
-static char *actionHack = "";
+static char *actionHack = "", *actionHack2 = "", *actionHack3 = "", *actionHack4 = "";
 
 /*
  * context bitmaps for TwmWindows menu, f.showdesktop and f.showiconmgr
@@ -218,7 +220,7 @@ InitMenus(void)
  */
 
 Bool
-AddFuncKey(char *name, int cont, int mods, int func, char *win_name, char *action)
+AddFuncKey(char *name, int cont, int mods, int func, char *win_name, char *action, char *action2, char *action3, char *action4)
 {
   FuncKey *tmp;
   KeySym keysym;
@@ -255,6 +257,9 @@ AddFuncKey(char *name, int cont, int mods, int func, char *win_name, char *actio
   tmp->func = func;
   tmp->win_name = win_name;
   tmp->action = action;
+  tmp->action2 = action2;
+  tmp->action3 = action3;
+  tmp->action4 = action4;
 
   return True;
 }
@@ -262,7 +267,7 @@ AddFuncKey(char *name, int cont, int mods, int func, char *win_name, char *actio
 
 
 int
-CreateTitleButton(char *name, int func, char *action, MenuRoot * menuroot, Bool rightside, Bool append)
+CreateTitleButton(char *name, int func, char *action, char *action2, char *action3, char *action4, MenuRoot * menuroot, Bool rightside, Bool append)
 {
   TitleButton *tb = (TitleButton *) malloc(sizeof(TitleButton));
 
@@ -279,6 +284,9 @@ CreateTitleButton(char *name, int func, char *action, MenuRoot * menuroot, Bool 
   tb->height = 0;		/* ditto */
   tb->func = func;
   tb->action = action;
+  tb->action2 = action2;
+  tb->action3 = action3;
+  tb->action4 = action4;
   tb->menuroot = menuroot;
   tb->rightside = rightside;
   if (rightside)
@@ -372,17 +380,17 @@ InitTitlebarButtons(void)
 
     if (Scr->TitleBevelWidth > 0)
     {
-      if (!CreateTitleButton(TBPM_3DDOT, F_ICONIFY, "", (MenuRoot *) NULL, False, False))
+      if (!CreateTitleButton(TBPM_3DDOT, F_ICONIFY, "", 0, 0, 0, (MenuRoot *) NULL, False, False))
 	fprintf(stderr, "%s:  unable to add iconify button\n", ProgramName);
-      if (!CreateTitleButton(TBPM_3DRESIZE, F_RESIZE, "", (MenuRoot *) NULL, True, True))
+      if (!CreateTitleButton(TBPM_3DRESIZE, F_RESIZE, "", 0, 0, 0, (MenuRoot *) NULL, True, True))
 	fprintf(stderr, "%s:  unable to add resize button\n", ProgramName);
     }
     else
     {
 
-      if (!CreateTitleButton(TBPM_ICONIFY, F_ICONIFY, "", (MenuRoot *) NULL, False, False))
+      if (!CreateTitleButton(TBPM_ICONIFY, F_ICONIFY, "", 0, 0, 0, (MenuRoot *) NULL, False, False))
 	fprintf(stderr, "%s:  unable to add iconify button\n", ProgramName);
-      if (!CreateTitleButton(TBPM_RESIZE, F_RESIZE, "", (MenuRoot *) NULL, True, True))
+      if (!CreateTitleButton(TBPM_RESIZE, F_RESIZE, "", 0, 0, 0, (MenuRoot *) NULL, True, True))
 	fprintf(stderr, "%s:  unable to add resize button\n", ProgramName);
     }
   }
@@ -733,6 +741,9 @@ static Bool fromMenu;
 
 extern int GlobalFirstTime;
 
+/*
+ * Process events inside a menu and its submenus until the menu is exited.
+ */
 void
 UpdateMenu(void)
 {
@@ -781,20 +792,26 @@ UpdateMenu(void)
     if (Event.type != MotionNotify)
       continue;
 
-    /* if we haven't received the enter notify yet, wait */
+    /* If we haven't received the enter event yet, wait for it. */
     if (!ActiveMenu || !ActiveMenu->entered)
       continue;
 
+    /* done will be set true if all required item highlighting/unhighlighting
+     * has been completed. */
     done = FALSE;
+    /* Find where the mouse is. */
     XQueryPointer(dpy, ActiveMenu->w.win, &JunkRoot, &JunkChild, &x_root, &y_root, &x, &y, &JunkMask);
 
     if (!ActiveItem)
+      /* If the mouse hasn't moved MoveDelta since the menu was popped-up,
+       * ignore the motion. */
       if (abs(x_root - MenuOrigX) < Scr->MoveDelta && abs(y_root - MenuOrigY) < Scr->MoveDelta)
 	continue;
 
-
+    /* Set Scr as an implicit argument for operations. */
     XFindContext(dpy, ActiveMenu->w.win, ScreenContext, (caddr_t *) & Scr);
 
+    /* Remove the effect of MenuBevel{Width,Height}. */
     JunkWidth = ActiveMenu->width;
     JunkHeight = ActiveMenu->height;
     if (Scr->MenuBevelWidth > 0)
@@ -809,6 +826,10 @@ UpdateMenu(void)
     if ((x < 0 || y < 0 || x >= JunkWidth || y >= JunkHeight) ||
 	(ActiveMenu->too_tall && (y < Scr->MenuScrollBorderWidth || y > JunkHeight - Scr->MenuScrollBorderWidth)))
     {
+      /* Mouse is outside the menu itself, or is in the scrolling border.
+       * Check for scrolling actions. */
+
+      /* Exit the active item, if there is one. */
       if (ActiveItem && ActiveItem->func != F_TITLE)
       {
 	ActiveItem->state = 0;
@@ -848,7 +869,7 @@ UpdateMenu(void)
       continue;
     }
 
-    /* look for the entry that the mouse is in */
+    /* Look for the entry that the mouse is in. */
     entry = (y / Scr->EntryHeight) + ActiveMenu->top;
     for (i = 0, mi = ActiveMenu->first; mi != NULL; i++, mi = mi->next)
     {
@@ -898,6 +919,8 @@ UpdateMenu(void)
 
     if (ActiveItem && ActiveItem->func == F_MENU && (x > PULLDOWNMENU_OFFSET))
     {
+      /* Pop up the submenu. */
+
       MenuRoot *save = ActiveMenu;
       int savex = MenuOrigins[MenuDepth - 1].x;
       int savey = MenuOrigins[MenuDepth - 1].y;
@@ -1015,7 +1038,7 @@ NewMenuRoot(char *name)
  */
 
 MenuItem *
-AddToMenu(MenuRoot * menu, char *item, char *action, MenuRoot * sub, int func, char *fore, char *back)
+AddToMenu(MenuRoot * menu, char *item, char *action, char *action2, char *action3, char *action4, MenuRoot * sub, int func, char *fore, char *back)
 {
   MenuItem *tmp;
   int width;
@@ -1042,6 +1065,9 @@ AddToMenu(MenuRoot * menu, char *item, char *action, MenuRoot * sub, int func, c
   tmp->item = item;
   tmp->strlen = strlen(item);
   tmp->action = action;
+  tmp->action2 = action2;
+  tmp->action3 = action3;
+  tmp->action4 = action4;
   tmp->next = NULL;
   tmp->sub = NULL;
   tmp->state = 0;
@@ -1065,18 +1091,12 @@ AddToMenu(MenuRoot * menu, char *item, char *action, MenuRoot * sub, int func, c
   tmp->user_colors = FALSE;
   if (Scr->Monochrome == COLOR && fore != NULL)
   {
-    int save;
-
-    save = Scr->FirstTime;
-    Scr->FirstTime = TRUE;
-
-    GetColor(COLOR, &tmp->normal.fore, fore);
-    GetColor(COLOR, &tmp->normal.back, back);
+    GetColorAlways(COLOR, &tmp->normal.fore, fore);
+    GetColorAlways(COLOR, &tmp->normal.back, back);
 
     if (!Scr->BeNiceToColormap)
       GetShadeColors(&tmp->normal);
 
-    Scr->FirstTime = save;
     tmp->user_colors = TRUE;
   }
   if (sub != NULL)
@@ -1129,7 +1149,7 @@ MakeMenu(MenuRoot * mr)
   Scr->EntryHeight = MAX(Scr->MenuFont.height, Scr->MenuTitleFont.height) + 4;
 #endif
 
-  /* lets first size the window accordingly */
+  /* let's first size the window accordingly */
   if (mr->mapped == NEVER_MAPPED)
   {
     if (mr->pull == TRUE)
@@ -1234,30 +1254,22 @@ MakeMenu(MenuRoot * mr)
   {
     XColor xcol;
     char colname[32];
-    short save;
 
     xcol.pixel = Scr->MenuC.back;
     XQueryColor(dpy, cmap, &xcol);
     sprintf(colname, "#%04x%04x%04x", 5 * (xcol.red / 6), 5 * (xcol.green / 6), 5 * (xcol.blue / 6));
-    save = Scr->FirstTime;
-    Scr->FirstTime = True;
-    GetColor(Scr->Monochrome, &mr->highlight.back, colname);
-    Scr->FirstTime = save;
+    GetColorAlways(Scr->Monochrome, &mr->highlight.back, colname);
   }
 
   if (Scr->MenuBevelWidth > 0 && (Scr->Monochrome == COLOR) && (mr->highlight.fore == UNUSED_PIXEL))
   {
     XColor xcol;
     char colname[32];
-    short save;
 
     xcol.pixel = Scr->MenuC.fore;
     XQueryColor(dpy, cmap, &xcol);
     sprintf(colname, "#%04x%04x%04x", 5 * (xcol.red / 6), 5 * (xcol.green / 6), 5 * (xcol.blue / 6));
-    save = Scr->FirstTime;
-    Scr->FirstTime = True;
-    GetColor(Scr->Monochrome, &mr->highlight.fore, colname);
-    Scr->FirstTime = save;
+    GetColorAlways(Scr->Monochrome, &mr->highlight.fore, colname);
   }
   if (Scr->MenuBevelWidth > 0 && !Scr->BeNiceToColormap)
     GetShadeColors(&mr->highlight);
@@ -1406,7 +1418,8 @@ MakeMenu(MenuRoot * mr)
  *	Inputs:
  *	menu	- the root pointer of the menu to pop up
  *	x, y	- location of upper left of menu
- *		center	- whether or not to center horizontally over position
+ *	center	- if true, center the menu horizontally over position x,y
+ *		  if false, place upper-left of menu at position x,y
  *
  ***********************************************************************
  */
@@ -1441,7 +1454,8 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   {
     TwmWindow *tmp_win;
 
-    /* this is the twm windows menu,  let's go ahead and build it */
+    /* This is the twm windows menu.  Its contents must be regenerated to
+     * ensure that they are current. */
 
     DestroyMenu(menu);
 
@@ -1451,7 +1465,8 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
     menu->width = 0;
     menu->mapped = NEVER_MAPPED;
 
-    AddToMenu(menu, "VTWM Windows", NULLSTR, (MenuRoot *) NULL, F_TITLE, NULLSTR, NULLSTR);
+
+    AddToMenu(menu, "VTWM Windows", NULLSTR, 0, 0, 0, (MenuRoot *) NULL, F_TITLE, NULLSTR, NULLSTR);
 
     WindowNameOffset = (char *)Scr->TwmRoot.next->name - (char *)Scr->TwmRoot.next;
     for (tmp_win = Scr->TwmRoot.next, WindowNameCount = 0; tmp_win != NULL; tmp_win = tmp_win->next)
@@ -1483,7 +1498,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
       }
       for (i = 0; i < WindowNameCount; i++)
       {
-	AddToMenu(menu, WindowNames[i]->name, (char *)WindowNames[i], (MenuRoot *) NULL, F_POPUP, NULLSTR, NULLSTR);
+	AddToMenu(menu, WindowNames[i]->name, (char *)WindowNames[i], 0, 0, 0, (MenuRoot *) NULL, F_POPUP, NULLSTR, NULLSTR);
 	if (!Scr->OldFashionedTwmWindowsMenu && Scr->Monochrome == COLOR)
 	{
 	  menu->last->user_colors = TRUE;
@@ -1529,9 +1544,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
    */
   menu->prev = ActiveMenu;
 
-  mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionHintMask;
-  if (Scr->StayUpMenus)
-    mask |= PointerMotionMask;
+  mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionMask;
 
   XGrabPointer(dpy, Scr->Root, True, mask, GrabModeAsync, GrabModeAsync, Scr->Root, Scr->MenuCursor, CurrentTime);
 
@@ -1579,9 +1592,6 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   if (Scr->Shadow)
   {
     XMoveWindow(dpy, menu->shadow, x + SHADOWWIDTH, y + SHADOWWIDTH);
-  }
-  if (Scr->Shadow)
-  {
     XRaiseWindow(dpy, menu->shadow);
   }
   XMapRaised(dpy, menu->w.win);
@@ -1592,6 +1602,7 @@ PopUpMenu(MenuRoot * menu, int x, int y, Bool center)
   XSync(dpy, False);
 
   XQueryPointer(dpy, menu->w.win, &JunkRoot, &JunkChild, &x_root, &y_root, &JunkX, &JunkY, &JunkMask);
+  /* Set MenuOrig{X,Y} for use by PopupMenu. */
   MenuOrigX = x_root;
   MenuOrigY = y_root;
 
@@ -1778,9 +1789,14 @@ MatchWinName(char *action, TwmWindow * t)
 
 extern int MovedFromKeyPress;
 
+static int new_retval = 0;
+
 int
-ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * eventp, int context, int pulldown)
+ExecuteFunction(int func, char *action, char *action2, char *action3, char *action4, Window w, TwmWindow * tmp_win, XEvent * eventp, int context, int pulldown)
 {
+  static int last_retval = -1;
+  new_retval = 0;
+
   char tmp[200];
   char *ptr;
   char buff[MAX_FILE_SIZE];
@@ -1788,6 +1804,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
   int do_next_action = TRUE;
 
   actionHack = action;
+  actionHack2 = action2;
+  actionHack3 = action3;
+  actionHack4 = action4;
+
   RootFunction = F_NOFUNCTION;
   if (Cancel)
     return TRUE;		/* XXX should this be FALSE? */
@@ -1903,6 +1923,9 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
   case F_RAISELOWER:
   case F_NAIL:
   case F_NAMEDOOR:
+  case F_NAMEOTHERDOOR:
+  case F_NAMEOTHERDOOR2:
+  case F_COLOROTHERDOOR:
   case F_BOTTOMZOOM:
   case F_FULLZOOM:
   case F_HORIZOOM:
@@ -1984,7 +2007,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	    new_argv = (char *)realloc((char *)my_argv, i * sizeof(char *));
 	    if (new_argv == NULL)
 	    {
-	      fprintf(stderr, "%s: unable to allocate %lu bytes for execvp()\n", ProgramName, (unsigned long int) (i * sizeof(char *)));
+	      fprintf(stderr, "%s: unable to allocate %lu bytes for execvp(): %s\n", ProgramName, (unsigned long int) (i * sizeof(char *)),strerror(errno));
 	      break;
 	    }
 	    else
@@ -2002,7 +2025,8 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  setup_restart(eventp->xbutton.time);
 
 	  execvp(*my_argv, my_argv);
-	  fprintf(stderr, "%s:  unable to start \"%s\"\n", ProgramName, *my_argv);
+	  fprintf(stderr, "%s:  unable to start \"%s\": %s\n", ProgramName, *my_argv, strerror(errno));
+	  new_retval = -1;
 	  new_argv = NULL;
 	}
 
@@ -2066,8 +2090,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
     case F_HIDELIST:
 
-      if (Scr->NoIconManagers)
+      if (Scr->NoIconManagers) {
+	new_retval = -1;
 	break;
+      }
 
       HideIconManager((context == C_ROOT) ? NULL : tmp_win);
 
@@ -2075,8 +2101,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
     case F_SORTICONMGR:
 
-      if (Scr->NoIconManagers || Scr->iconmgr.count == 0)
+      if (Scr->NoIconManagers || Scr->iconmgr.count == 0) {
+	new_retval = -1;
 	break;
+      }
 
       if (DeferExecution(context, func, Scr->SelectCursor))
 	return TRUE;
@@ -2091,8 +2119,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  SortIconManager((IconMgr *) NULL);
 	else if (tmp_win->iconmgr)
 	  SortIconManager(tmp_win->iconmgrp);
-	else
+	else {
+	  new_retval = -1;
 	  DoAudible();
+	}
 
 	Scr->SortIconMgr = save_sort;
       }
@@ -2177,7 +2207,8 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
       tmp_win = (TwmWindow *) action;
       if (Scr->WindowFunction.func != F_NOFUNCTION)
       {
-	ExecuteFunction(Scr->WindowFunction.func, Scr->WindowFunction.item->action, w, tmp_win, eventp, C_FRAME, FALSE);
+	ExecuteFunction(Scr->WindowFunction.func, Scr->WindowFunction.item->action, Scr->WindowFunction.item->action2, Scr->WindowFunction.item->action3, Scr->WindowFunction.item->action4, w, tmp_win, eventp, C_FRAME, FALSE);
+	new_retval = last_retval;
       }
       else
       {
@@ -2204,6 +2235,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
         /* immutables can't be resized - slr - 12252009 */
         if (tmp_win && tmp_win->immutable == TRUE) { 
           /* DoAudible(); */
+	  new_retval = -1;
 	  break;
         } 
 
@@ -2221,6 +2253,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	if (context == C_ICON)	/* can't resize icons */
 	{
 	  DoAudible();
+	  new_retval = -1;
 	  break;
 	}
 
@@ -2244,6 +2277,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  if ((XFindContext(dpy, eventp->xbutton.subwindow, VirtualContext, (caddr_t *) & twin) == XCNOENT))
 	  {
 	    DoAudible();
+	    new_retval = -1;
 	    break;
 	  }
 
@@ -2256,6 +2290,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  if (!warp_if_warpunmapped(tmp_win, F_NOFUNCTION))
 	  {
 	    DoAudible();
+	    new_retval = -1;
 	    break;
 	  }
 
@@ -2515,6 +2550,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
         /* immutables can't be moved - slr - 12252009 */
         if (tmp_win && tmp_win->immutable == TRUE) { 
           /* DoAudible(); */
+	  new_retval = -1;
           break;
         } 
 
@@ -2545,6 +2581,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  if ((XFindContext(dpy, eventp->xbutton.subwindow, VirtualContext, (caddr_t *) & twin) == XCNOENT))
 	  {
 	    DoAudible();
+	    new_retval = -1;
 	    break;
 	  }
 
@@ -2559,6 +2596,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	    if (!warp_if_warpunmapped(tmp_win, F_NOFUNCTION))
 	    {
 	      DoAudible();
+	      new_retval = -1;
 	      break;
 	    }
 
@@ -2955,6 +2993,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	break;
       }
     case F_FUNCTION:
+    exec_function:
       {
 	MenuRoot *mroot;
 	MenuItem *mitem;
@@ -2963,7 +3002,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	if ((mroot = FindMenuRoot(action)) == NULL)
 	{
 	  fprintf(stderr, "%s: couldn't find function \"%s\"\n", ProgramName, action);
-	  return TRUE;
+//	  return TRUE;
+	  do_next_action = 0;
+	  new_retval = -1;
+	  break;
 	}
 
 	if ((cursor = NeedToDefer(mroot)) != None && DeferExecution(context, func, cursor))
@@ -2972,11 +3014,112 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	{
 	  for (mitem = mroot->first; mitem != NULL; mitem = mitem->next)
 	  {
-	    if (!ExecuteFunction(mitem->func, mitem->action, w, tmp_win, eventp, context, pulldown))
+	    if (! ExecuteFunction(mitem->func, mitem->action, mitem->action2, mitem->action3, mitem->action4, w, tmp_win, eventp, context, pulldown))
 	      break;
 	  }
+	  new_retval = last_retval;
 	}
       }
+      break;
+
+    case F_FUNCTIONIFCLIPEQ:
+      action3 = 0; /* be sure */
+      /* fall through */
+
+    case F_FUNCTIONIFCLIPEQELSE:
+
+      ptr = XFetchBytes(dpy, &count);
+      if (ptr && (count > 0)) {
+	if (ptr[count-1] == '\n')
+	  --count;
+	char *f_to_call = ((count == strlen(action)) && (! strncmp(ptr,action,count))) ? action2 : action3;
+	XFree(ptr);
+	if (f_to_call && *f_to_call) {
+	  action = f_to_call;
+	  goto exec_function;
+	}
+      } else {
+	fprintf(stderr, "%s: f.ifclipeqelse: cut buffer is empty\n", ProgramName);
+	DoAudible();
+	new_retval = -1;
+	do_next_action = 0;
+      }
+
+      break;
+
+    case F_RETURNIFCLIPEQ:
+    case F_RETURNIFCLIPNEQ:
+
+      ptr = XFetchBytes(dpy, &count);
+      if (ptr && (count > 0)) {
+	if (ptr[count-1] == '\n')
+	  --count;
+	int test = ((count == strlen(action)) && (! strncmp(ptr,action,count)));
+	if (func == F_RETURNIFCLIPNEQ)
+	  test = ! test;
+	if (test)
+	  do_next_action = 0;
+	XFree(ptr);
+      } else {
+	fprintf(stderr, "%s: f.ifclipeqreturn: cut buffer is empty\n", ProgramName);
+	DoAudible();
+	do_next_action = 0;
+	new_retval = -1;
+      }
+
+      break;
+
+    case F_FUNCTIONIFEXITVALEQ:
+      action3 = 0; /* be sure */
+      /* fall through */
+
+    case F_FUNCTIONIFEXITVALEQELSE:
+
+      if (! WIFEXITED(Scr->last_wstatus)) {
+	fprintf(stderr, "%s: f.ifexitvaleqelse: last exit was not a normal exit.\n", ProgramName);
+	DoAudible();
+	new_retval = -1;
+	do_next_action = 0;
+      } else {
+	int ifval = atoi(action);
+	char *f_to_call = (ifval == WEXITSTATUS(Scr->last_wstatus)) ? action2 : action3;
+	if (f_to_call && *f_to_call) {
+	  action = f_to_call;
+	  goto exec_function;
+	}
+      }
+      break;
+
+    case F_RETURNIFEXITVALEQ:
+    case F_RETURNIFEXITVALNEQ:
+
+      if (! WIFEXITED(Scr->last_wstatus)) {
+	fprintf(stderr, "%s: f.ifexitvaleqreturn: last exit was not a normal exit.\n", ProgramName);
+	DoAudible();
+	new_retval = -1;
+	do_next_action = 0;
+      } else {
+	int ifval = atoi(action);
+	int test = (ifval == WEXITSTATUS(Scr->last_wstatus));
+	if (func == F_RETURNIFEXITVALNEQ)
+	  test = ! test;
+	if (test)
+	  do_next_action = 0;
+      }
+      break;
+
+    case F_RETURNIFRETVALNOK:
+      if (last_retval == 0)
+	do_next_action = 1;
+      else
+	do_next_action = 0;
+      break;
+
+    case F_RETURNIFRETVALOK:
+      if (last_retval == 0)
+	do_next_action = 0;
+      else
+	do_next_action = 1;
       break;
 
     case F_DEICONIFY:
@@ -3112,6 +3255,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 		/* no f.showdesktop or f.showiconmgr */
 
 		DoAudible();
+		new_retval = -1;
 
 		if (twin)
 		  tmp_win = twin;
@@ -3229,9 +3373,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  have_showdesktop = FindMenuOrFuncInBindings(C_ALL_BITS, NULL, F_SHOWDESKTOP);
 	if (FindMenuOrFuncInWindows(tmp_win, have_showdesktop, NULL, F_SHOWDESKTOP))
 	  XUnmapWindow(dpy, Scr->VirtualDesktopDisplayTwin->frame);
-	else
-
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
 	break;
       }
 
@@ -3256,8 +3401,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	  HideIconManager(tmp_win);
 
-	else
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
       }
       else
       {
@@ -3283,8 +3430,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  have_showdesktop = FindMenuOrFuncInBindings(C_ALL_BITS, NULL, F_SHOWDESKTOP);
 	if (FindMenuOrFuncInWindows(tmp_win, have_showdesktop, NULL, F_SHOWDESKTOP))
 	  XUnmapWindow(dpy, Scr->VirtualDesktopDisplayTwin->frame);
-	else
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
 
 	break;
       }
@@ -3310,8 +3459,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	  HideIconManager(tmp_win);
 
-	else
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
       }
       else if (tmp_win->protocols & DoesWmDeleteWindow)
       {
@@ -3319,8 +3470,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	SendDeleteWindowMessage(tmp_win, LastTimestamp());
       }
-      else
+      else {
 	DoAudible();
+	new_retval = -1;
+      }
       break;
 
     case F_SAVEYOURSELF:
@@ -3329,8 +3482,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
       if (tmp_win->protocols & DoesWmSaveYourself)
 	SendSaveYourselfMessage(tmp_win, LastTimestamp());
-      else
+      else {
 	DoAudible();
+	new_retval = -1;
+      }
       break;
 
     case F_CIRCLEUP:
@@ -3370,6 +3525,8 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  createSoundFromFunction = TRUE;
 #endif
 	Execute(scr, action);
+	if ((! WIFEXITED(scr->last_wstatus)) || (WEXITSTATUS(scr->last_wstatus) != 0))
+	  new_retval = -1;
       }
       break;
 
@@ -3393,12 +3550,26 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
       XStoreBytes(dpy, tmp, strlen(tmp));
       break;
 
+    case F_CUTNOLF:
+      strcpy(tmp, action);
+      XStoreBytes(dpy, tmp, strlen(tmp));
+      break;
+
     case F_CUTFILE:
       ptr = XFetchBytes(dpy, &count);
       if (ptr)
       {
-	if (sscanf(ptr, "%s", tmp) == 1)
-	{
+	if (count >= sizeof tmp) {
+	  fprintf(stderr, "%s: clipboard string is %d bytes long, but vtwm buffer is only %lu bytes.\n",ProgramName,count,sizeof tmp);
+	  XFree(ptr);
+	  DoAudible();
+	  do_next_action = 0;
+	  new_retval = -1;
+	  break;
+	}
+	memcpy(tmp,ptr,(size_t)count);
+	tmp[count] = 0;
+
 	  XFree(ptr);
 	  ptr = ExpandFilename(tmp);
 	  if (ptr)
@@ -3409,25 +3580,61 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	      count = read(fd, buff, MAX_FILE_SIZE - 1);
 	      if (count > 0)
 		XStoreBytes(dpy, buff, count);
+	      else
+		new_retval = -1;
 	      close(fd);
 	    }
 	    else
 	    {
 	      fprintf(stderr, "%s:  unable to open cut file \"%s\"\n", ProgramName, tmp);
+	      DoAudible();
+	      do_next_action = 0;
+	      new_retval = -1;
 	    }
 	    if (ptr != tmp)
 	      free(ptr);
 	  }
-	}
-	else
-	{
-	  XFree(ptr);
-	}
+
       }
       else
       {
 	fprintf(stderr, "%s:  cut buffer is empty\n", ProgramName);
+	DoAudible();
+	do_next_action = 0;
+	new_retval = -1;
       }
+      break;
+
+    case F_CUTFILE2:
+
+	  ptr = ExpandFilename(action);
+	  if (ptr)
+	  {
+	    fd = open(ptr, 0);
+	    if (fd >= 0)
+	    {
+	      count = read(fd, buff, MAX_FILE_SIZE - 1);
+	      if (count > 0)
+		XStoreBytes(dpy, buff, count);
+	      else
+		new_retval = -1;
+	      close(fd);
+	    }
+	    else
+	    {
+	      fprintf(stderr, "%s:  unable to open cut file \"%s\"\n", ProgramName, ptr);
+	      DoAudible();
+	      do_next_action = 0;
+	      new_retval = -1;
+	    }
+	    if (ptr != action)
+	      free(ptr);
+	  } else {
+	    fprintf(stderr, "%s:  ExpandFilename(%s) failed.\n", ProgramName, action);
+	    DoAudible();
+	    do_next_action = 0;
+	    new_retval = -1;
+	  }
       break;
 
     case F_WARPTOSCREEN:
@@ -3503,8 +3710,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	WarpToWindow(Scr->Newest);
       }
-      else
+      else {
 	DoAudible();
+	new_retval = -1;
+      }
       break;
 
     case F_WARPTO:
@@ -3546,8 +3755,10 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	    t = Scr->TwmRoot.next;	/* wrap window list */
 	}
 
-	if (!did_warpto)
+	if (!did_warpto) {
 	  DoAudible();
+	  new_retval = -1;
+	}
       }
       break;
 
@@ -3567,6 +3778,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	else
 	{
 	  DoAudible();
+	  new_retval = -1;
 	}
       }
       break;
@@ -3615,6 +3827,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	if (!raisewin)
 	{
 	  DoAudible();
+	  new_retval = -1;
 	  break;
 	}
 
@@ -3631,6 +3844,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	else
 	{
 	  DoAudible();
+	  new_retval = -1;
 	}
       }
       break;
@@ -3682,6 +3896,7 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  break;
 	default:
 	  DoAudible();
+	  new_retval = -1;
 	  break;
       }
       break;
@@ -3694,12 +3909,17 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	count = read(fd, buff, MAX_FILE_SIZE - 1);
 	if (count > 0)
 	  XStoreBytes(dpy, buff, count);
+	else
+	  new_retval = -1;
 
 	close(fd);
       }
       else
       {
 	fprintf(stderr, "%s:  unable to open file \"%s\"\n", ProgramName, action);
+	DoAudible();
+	do_next_action = 0;
+	new_retval = -1;
       }
       break;
 
@@ -3758,15 +3978,31 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
        * move a percentage in a particular direction
        */
     case F_PANDOWN:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(0, (atoi(action) * Scr->MyDisplayHeight) / 100, NULL, NULL);
       break;
     case F_PANLEFT:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(-((atoi(action) * Scr->MyDisplayWidth) / 100), 0, NULL, NULL);
       break;
     case F_PANRIGHT:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen((atoi(action) * Scr->MyDisplayWidth) / 100, 0, NULL, NULL);
       break;
     case F_PANUP:
+#ifdef TWM_USE_SLOPPYFOCUS
+      if (SloppyFocus == TRUE)
+	FocusOnRoot();	/* drop client focus before screen switch */
+#endif
       PanRealScreen(0, -((atoi(action) * Scr->MyDisplayHeight) / 100), NULL, NULL);
       break;
 
@@ -3816,11 +4052,15 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  if (dx != 0 || dy != 0)
 	    PanRealScreen(dx, dy, NULL, NULL);
 
-	  else
+	  else {
 	    DoAudible();
+	    new_retval = -1;
+	  }
 	}
-	else
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
 	break;
 
 	case F_SNUGWINDOW:
@@ -3858,11 +4098,15 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	  if (dx != 0 || dy != 0)
 	    PanRealScreen(dx, dy, NULL, NULL);
 
-	  else
+	  else {
 	    DoAudible();
+	    new_retval = -1;
+	  }
 	}
-	else
+	else {
 	  DoAudible();
+	  new_retval = -1;
+	}
 
 	break;
       }
@@ -4063,7 +4307,16 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	TwmDoor *d;
 
 	if (XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & d) != XCNOENT)
-	  door_enter(tmp_win->w, d);
+	  door_enter(tmp_win, d, eventp, DOOR_FORWARD);
+	break;
+      }
+
+    case F_ENTERDOORBACKWARDS:
+      {
+	TwmDoor *d;
+
+	if (XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & d) != XCNOENT)
+	  door_enter(tmp_win, d, eventp, DOOR_BACKWARD);
 	break;
       }
 
@@ -4090,10 +4343,36 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 	break;
       }
 
+    case F_DELETEDOORBYNAME:
+      if (door_delete_by_name(action) < 0) {
+	DoAudible();
+	new_retval = -1;
+      }
+      break;
+
     case F_NEWDOOR:
       PopDownMenu();
       door_new();
       break;
+
+    case F_NEWDOOR3:
+    case F_NEWDOOR4:
+      {
+	TwmDoor *d;
+	d = door_add(action, action2, action3, action4, 0 /* alt initial text */);
+	if (! d) {
+	  DoAudible();
+	  new_retval = -1;
+	  break;
+	}
+	{
+	  int oldHandlingEvents = HandlingEvents;
+	  HandlingEvents = False;
+	  door_open(d);
+	  HandlingEvents = oldHandlingEvents;
+	}
+	break;
+      }
 
     case F_NAMEDOOR:
       {
@@ -4101,6 +4380,143 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
 	if (XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & d) != XCNOENT)
 	  door_paste_name(tmp_win->w, d);
+	else
+	  new_retval = -1;
+	break;
+      }
+
+    case F_NAMEOTHERDOOR:
+      {
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,action))
+	    break;
+	if (d) {
+	  if (door_paste_name(d->twin->w, d) == 0)
+	    RedoDoorName(d->twin, d);
+	} else
+	  new_retval = -1;
+	break;
+      }
+
+    case F_NAMEOTHERDOOR2:
+      {
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,action))
+	    break;
+	if (d) {
+	  if (door_set_name(d->twin->w, d, action2, strlen(action2)) == 0)
+	    RedoDoorName(d->twin, d);
+	  else
+	    new_retval = -1;
+	}
+	break;
+      }
+
+    case F_CLIPOTHERDOORNAME:
+      {
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,action))
+	    break;
+	if (d)
+	  XStoreBytes(dpy, d->name,strlen(d->name));
+	else {
+	  fprintf(stderr,"%s: clipotherdoorname: door \"%s\" not found.\n",ProgramName,action);
+	  DoAudible();
+	  do_next_action = 0;
+	  new_retval = -1;
+	}
+      }
+
+      break;
+
+    case F_COLOROTHERDOOR:
+      {
+	if (Scr->Monochrome != COLOR)
+	  break;
+
+	new_retval = -1;
+
+	char fgcolorname[32] = {}, bgcolorname[32] = {}, bordercolorname[32] = {};
+
+	/* "doorname" "fgcolor;bgcolor;bordercolor" */
+	if (sscanf(action2,"%31s %31s %31s", fgcolorname, bgcolorname, bordercolorname) < 1) {
+	  fprintf(stderr, "%s:  bad door color scheme \"%s\" for door \"%s\"\n", ProgramName, action2, action);
+	  DoAudible();
+	  do_next_action = 0;
+	  new_retval = -1;
+	  break;
+	}
+
+	Pixel fgcolor, bgcolor, bordercolor;
+
+	if (fgcolorname[0] && strcmp(fgcolorname,"-")) {
+	  if (GetColorAlways(COLOR, &fgcolor, fgcolorname) < 0)
+	    break;
+	}
+	if (bgcolorname[0] && strcmp(bgcolorname,"-")) {
+	  if (GetColorAlways(COLOR, &bgcolor, bgcolorname) < 0)
+	    break;
+	}
+	if (bordercolorname[0] && strcmp(bordercolorname,"-")) {
+	  if (GetColorAlways(COLOR, &bordercolor, bordercolorname) < 0)
+	    break;
+	}
+
+	TwmDoor *d;
+	for (d=Scr->Doors; d; d=d->next)
+	  if (! strcmp(d->twin->name,action))
+	    break;
+	if (! d)
+	  break;
+
+	new_retval = 0;
+
+	int nchanges = 0;
+
+	if (fgcolorname[0] && strcmp(fgcolorname,"-")) {
+	  if (d->colors.fore != fgcolor) {
+	    d->colors.fore = fgcolor;
+	    ++nchanges;
+	  }
+	}
+	if (bgcolorname[0] && strcmp(bgcolorname,"-")) {
+	  if (d->colors.back != bgcolor) {
+	    d->colors.back = bgcolor;
+	    XSetWindowBackground(dpy, d->w.win, d->colors.back);
+	    ++nchanges;
+	  }
+	}
+	if (bordercolorname[0] && strcmp(bordercolorname,"-")) {
+	  if (d->twin->border.back != bordercolor) {
+	    d->twin->border.back = bordercolor;
+	    ++nchanges;
+	  }
+	}
+
+	if (! nchanges)
+	  break;
+
+	RedoDoorName(d->twin, d);
+	XUnmapWindow(dpy, d->w.win);
+	XMapWindow(dpy, d->w.win);
+
+#if 0
+	/* stuff that wound up not being needed for this: */
+// GetColorAlways(COLOR, &d->twin->border.fore, "black");
+// GetColorAlways(COLOR, &d->twin->border.back, "white");
+// GetColorAlways(COLOR, &d->twin->border_tile.fore, "black");
+// GetColorAlways(COLOR, &d->twin->border_tile.back, "white");
+//XSetWindowBackground(dpy, d->twin->w, d->colors.back);
+
+//XUnmapWindow(dpy, d->twin->w);
+//XMapWindow(dpy, d->twin->w);
+//XSync(dpy, False);
+
+#endif /* 0 */
+
 	break;
       }
 
@@ -4145,6 +4561,9 @@ ExecuteFunction(int func, char *action, Window w, TwmWindow * tmp_win, XEvent * 
 
   if (ButtonPressed == -1)
     XUngrabPointer(dpy, CurrentTime);
+
+  last_retval = new_retval;
+
   return do_next_action;
 }
 
@@ -4175,6 +4594,9 @@ DeferExecution(int context, int func, Cursor cursor)
 
     RootFunction = func;
     Action = actionHack;
+    Action2 = actionHack2;
+    Action3 = actionHack3;
+    Action4 = actionHack4;
 
     return (TRUE);
   }
@@ -4213,7 +4635,7 @@ ReGrab(void)
  ***********************************************************************
  */
 
-static Cursor
+Cursor
 NeedToDefer(MenuRoot * root)
 {
   MenuItem *mitem;
@@ -4281,10 +4703,9 @@ NeedToDefer(MenuRoot * root)
  *
  */
 static void
-newsystem(const char *command)
+newsystem(ScreenInfo *scr, const char *command)
 {
     pid_t pid, savedpid;
-    int pstat;
     sigset_t newsigblock, oldsigblock;
 
     if (!command)           /* just checking... */
@@ -4318,7 +4739,7 @@ newsystem(const char *command)
 	default:                        /* parent */
 	    savedpid = pid;
 	    do {
-		pid = wait4(savedpid, &pstat, 0, (struct rusage *)0);
+		pid = wait4(savedpid, &scr->last_wstatus, 0, (struct rusage *)0);
 	    } while (pid == -1 && errno == EINTR);
 	    break;
     }
@@ -4385,12 +4806,12 @@ Execute(ScreenInfo * scr, char *s)
     restorevar = 1;
   }
 
-  (void)newsystem(es);
+  (void)newsystem(scr, es);
   free(es);
 
   if (restorevar)
   {				/* why bother? */
-    (void)sprintf(buf, "DISPLAY=%s", oldDisplay);
+    (void)snprintf(buf, sizeof buf, "DISPLAY=%s", oldDisplay);
     putenv(buf);
   }
 }
@@ -4755,7 +5176,7 @@ Identify(TwmWindow * t)
 #endif
 
   n = 0;
-  (void)sprintf(Info[n++], "%s", Version);
+  (void)snprintf(Info[n++], sizeof Info[n], "%s", Version);
   Info[n++][0] = '\0';
 
   if (t)
@@ -4763,10 +5184,10 @@ Identify(TwmWindow * t)
     XGetGeometry(dpy, t->w, &JunkRoot, &JunkX, &JunkY, &wwidth, &wheight, &bw, &depth);
     (void)XTranslateCoordinates(dpy, t->w, Scr->Root, 0, 0, &x, &y, &junk);
 
-    (void)sprintf(Info[n++], "Name:  \"%s\"", t->full_name);
-    (void)sprintf(Info[n++], "Class.res_name:  \"%s\"", t->class.res_name);
-    (void)sprintf(Info[n++], "Class.res_class:  \"%s\"", t->class.res_class);
-    (void)sprintf(Info[n++], "Icon name:  \"%s\"", t->icon_name);
+    (void)snprintf(Info[n++], sizeof Info[n], "Name:  \"%s\"", t->full_name);
+    (void)snprintf(Info[n++], sizeof Info[n], "Class.res_name:  \"%s\"", t->class.res_name);
+    (void)snprintf(Info[n++], sizeof Info[n], "Class.res_class:  \"%s\"", t->class.res_class);
+    (void)snprintf(Info[n++], sizeof Info[n], "Icon name:  \"%s\"", t->icon_name);
     Info[n++][0] = '\0';
 
 #if 1
@@ -4781,9 +5202,9 @@ Identify(TwmWindow * t)
 	  if (tmp->w == t->wmhints->window_group)
 	    break;
 	if (tmp != NULL)
-	  (void) sprintf(Info[n++], "Group member of = \"%s\"", tmp->full_name);
+	  (void) snprintf(Info[n++], sizeof Info[n], "Group member of = \"%s\"", tmp->full_name);
 	else
-	  (void) sprintf(Info[n++], "Group member of = 0x0%lx", (long)(t->wmhints->window_group));
+	  (void) snprintf(Info[n++], sizeof Info[n], "Group member of = 0x0%lx", (long)(t->wmhints->window_group));
       }
       if (t->transient)
       {
@@ -4791,9 +5212,9 @@ Identify(TwmWindow * t)
 	  if (tmp->w == t->transientfor)
 	    break;
 	if (tmp != NULL)
-	  (void) sprintf(Info[n++], "Transient for = \"%s\"", tmp->full_name);
+	  (void) snprintf(Info[n++], sizeof Info[n], "Transient for = \"%s\"", tmp->full_name);
 	else
-	  (void) sprintf(Info[n++], "Transient for = 0x0%lx", (long)(t->transientfor));
+	  (void) snprintf(Info[n++], sizeof Info[n], "Transient for = 0x0%lx", (long)(t->transientfor));
       }
 
       if (t->wmhints != NULL && (t->wmhints->flags & StateHint))
@@ -4829,7 +5250,7 @@ Identify(TwmWindow * t)
 	      break;
 	  }
 	  if (t->wmhints->initial_state != NormalState)
-	    (void) sprintf(Info[n++], "Initial state = %s", f);
+	    (void) snprintf(Info[n++], sizeof Info[n], "Initial state = %s", f);
       }
       if (GetWMState(t->w, &i, &JunkChild) == True)
       {
@@ -4864,11 +5285,11 @@ Identify(TwmWindow * t)
 	    break;
 	}
 	if (i != NormalState)
-	  (void) sprintf(Info[n++], "_XA_WM_STATE = %s", f);
+	  (void) snprintf(Info[n++], sizeof Info[n], "_XA_WM_STATE = %s", f);
       }
 
       if (t->wmhints != NULL && (t->wmhints->flags & IconWindowHint))
-	(void) sprintf(Info[n++], "Icon window = foreign");
+	(void) snprintf(Info[n++], sizeof Info[n], "Icon window = foreign");
 
       if (t->wmhints != NULL)
       {
@@ -4891,21 +5312,21 @@ Identify(TwmWindow * t)
 	case 6: f = "Unknown (Passive?)"; break;
 	case 5: f = "Unknown (Globally Active?)"; break;
       }
-      (void) sprintf(Info[n++], "ICCCM Focusing = %s", f);
+      (void) snprintf(Info[n++], sizeof Info[n], "ICCCM Focusing = %s", f);
 
       if (t->hints.width || t->hints.height || t->hints.x || t->hints.y)
-        (void) sprintf(Info[n++], "XSizeHints = %dx%d%+d%+d",
+        (void) snprintf(Info[n++], sizeof Info[n], "XSizeHints = %dx%d%+d%+d",
 		t->hints.width, t->hints.height, t->hints.x, t->hints.y);
       if (t->hints.flags & USPosition)
-	(void) sprintf(Info[n++], "USPosition = true");
+	(void) snprintf(Info[n++], sizeof Info[n], "USPosition = true");
       if (t->hints.flags & USSize)
-	(void) sprintf(Info[n++], "USSize = true");
+	(void) snprintf(Info[n++], sizeof Info[n], "USSize = true");
       if (t->hints.flags & PPosition)
-	(void) sprintf(Info[n++], "PPosition = true");
+	(void) snprintf(Info[n++], sizeof Info[n], "PPosition = true");
       if (t->hints.flags & PSize)
-	(void) sprintf(Info[n++], "PSize = true");
+	(void) snprintf(Info[n++], sizeof Info[n], "PSize = true");
       if (t->hints.flags & PBaseSize)
-	(void) sprintf(Info[n++], "PBaseSize = %dx%d",
+	(void) snprintf(Info[n++], sizeof Info[n], "PBaseSize = %dx%d",
 		t->hints.base_width, t->hints.base_height);
       if (t->hints.flags & PWinGravity)
       {
@@ -4937,7 +5358,7 @@ Identify(TwmWindow * t)
 	    f = "Unknown"; break;
 	}
 	if (t->hints.win_gravity != NorthWestGravity)
-	  (void) sprintf(Info[n++], "PWinGravity = %s", f);
+	  (void) snprintf(Info[n++], sizeof Info[n], "PWinGravity = %s", f);
       }
 #if 0
       switch (t->attr.win_gravity)
@@ -4974,7 +5395,7 @@ Identify(TwmWindow * t)
 	  default:
 	    f = "Unknown"; break;
       }
-      (void) sprintf(Info[n++], "WinGravity = %s", f);
+      (void) snprintf(Info[n++], sizeof Info[n], "WinGravity = %s", f);
 
       switch (t->attr.bit_gravity)
       {
@@ -5003,18 +5424,18 @@ Identify(TwmWindow * t)
 	  default:
 	    f = "Unknown"; break;
       }
-      (void) sprintf(Info[n++], "BitGravity = %s", f);
+      (void) snprintf(Info[n++], sizeof Info[n], "BitGravity = %s", f);
 #endif
-      (void) sprintf(Info[n++], "Frame XID = 0x0%lx", (long)(t->frame));
-      (void) sprintf(Info[n++], "Window XID = 0x0%lx", (long)(t->w));
+      (void) snprintf(Info[n++], sizeof Info[n], "Frame XID = 0x0%lx", (long)(t->frame));
+      (void) snprintf(Info[n++], sizeof Info[n], "Window XID = 0x0%lx", (long)(t->w));
 
       Info[n++][0] = '\0';
     }
 #endif
 
-    (void)sprintf(Info[n++], "Geometry/root:  %dx%d+%d+%d", wwidth, wheight, x, y);
-    (void)sprintf(Info[n++], "Border width:  %d", t->old_bw);
-    (void)sprintf(Info[n++], "Depth:  %d", depth);
+    (void)snprintf(Info[n++], sizeof Info[n], "Geometry/root:  %dx%d+%d+%d", wwidth, wheight, x, y);
+    (void)snprintf(Info[n++], sizeof Info[n], "Border width:  %d", t->old_bw);
+    (void)snprintf(Info[n++], sizeof Info[n], "Depth:  %d", depth);
 
     Info[n++][0] = '\0';
   }
@@ -5034,7 +5455,7 @@ Identify(TwmWindow * t)
      */
     i = 0;
     while (lastmake[i][0] != '\0')
-      (void)sprintf(Info[n++], "%s", lastmake[i++]);
+      (void)snprintf(Info[n++], sizeof Info[n], "%s", lastmake[i++]);
 
 #ifdef NO_M4_SUPPORT
     is_m4 = '-';
@@ -5071,7 +5492,7 @@ Identify(TwmWindow * t)
 #else
     is_regex = '+';
 #endif
-    (void)sprintf(Info[n++], "Options:  %cm4 %cregex %csound %crplay %cesd %coss %cxpm", is_m4, is_regex, is_sound, is_rplay, is_esd, is_oss, is_xpm);
+    (void)snprintf(Info[n++], sizeof Info[n], "Options:  %cm4 %cregex %csound %crplay %cesd %coss %cxpm", is_m4, is_regex, is_sound, is_rplay, is_esd, is_oss, is_xpm);
     Info[n++][0] = '\0';
 #endif
 #ifdef TILED_SCREEN
@@ -5079,7 +5500,7 @@ Identify(TwmWindow * t)
     {
       i = FindNearestTileToMouse();
       if (i >= 0 && i < Scr->ntiles) {
-	(void) sprintf(Info[n++], "Panel %d (connector '%s'): x = %d  y = %d  w = %d  h = %d", i+1,
+	(void) snprintf(Info[n++], sizeof Info[n], "Panel %d (connector '%s'): x = %d  y = %d  w = %d  h = %d", i+1,
 		       (Scr->tile_names && Scr->tile_names[i] ? Scr->tile_names[i] : "unknown"),
 		       Lft(Scr->tiles[i]), Bot(Scr->tiles[i]),
 		       AreaWidth(Scr->tiles[i]), AreaHeight(Scr->tiles[i]));
@@ -5121,16 +5542,16 @@ Identify(TwmWindow * t)
 	r = "?";
       }
       if (w)
-	(void) sprintf(Info[n++], "Focus: window = '%s' revert to = '%s'", w, r);
+	(void) snprintf(Info[n++], sizeof Info[n], "Focus: window = '%s' revert to = '%s'", w, r);
       else
-	(void) sprintf(Info[n++], "Focus: window = 0x0%lx revert to = '%s'", (long)JunkChild, r);
+	(void) snprintf(Info[n++], sizeof Info[n], "Focus: window = 0x0%lx revert to = '%s'", (long)JunkChild, r);
       if (t != NULL)
 	XFree (t);
     }
 #endif
   }
 
-  (void)sprintf(Info[n++], "Click to dismiss...");
+  (void)snprintf(Info[n++], sizeof Info[n], "Click to dismiss...");
 
   /* figure out the width and height of the info window */
 
@@ -5601,6 +6022,7 @@ WarpClass(int next, TwmWindow * t, char *class)
     else
     {
       DoAudible();
+      new_retval = -1;
       return;
     }
   }
@@ -5698,6 +6120,7 @@ WarpAlongRing(XButtonEvent * ev, Bool forward)
   if (!(head = (Scr->RingLeader) ? Scr->RingLeader : Scr->Ring))
   {
     DoAudible();
+    new_retval = -1;
     return;
   }
 
@@ -5727,8 +6150,10 @@ WarpAlongRing(XButtonEvent * ev, Bool forward)
     WarpToWindow(r);
 
   }
-  else
+  else {
     DoAudible();
+    new_retval = -1;
+  }
 }
 
 
@@ -5794,6 +6219,7 @@ WarpToScreen(ScreenInfo * scr, int n, int inc)
       }
       fprintf(stderr, "%s:  unable to warp to unmanaged screen %d\n", ProgramName, n);
       DoAudible();
+      new_retval = -1;
       return;
     }
   }
@@ -6045,8 +6471,10 @@ do_squeezetitle(int context, int func, TwmWindow * tmp_win, SqueezeInfo * squeez
 	WarpToWindow(tmp_win);
     }
   }
-  else
+  else {
     DoAudible();
+    new_retval = -1;
+  }
 
   return FALSE;
 }

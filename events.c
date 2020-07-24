@@ -82,16 +82,18 @@ extern int createSoundFromFunction;
 extern int destroySoundFromFunction;
 #endif
 
-extern Bool PrintErrorMessages;
+extern int PrintErrorMessages;
 
 #define MAX_X_EVENT 256
 event_proc EventHandler[MAX_X_EVENT];	/* event handler jump table */
-char *Action;
+char *Action = 0, *Action2 = 0, *Action3 = 0, *Action4 = 0;
 int Context = C_NO_CONTEXT;	/* current button press context */
 TwmWindow *ButtonWindow;	/* button press window structure */
 XEvent ButtonEvent;		/* button press event */
 XEvent Event;			/* the current event */
-TwmWindow *Tmp_win;		/* the current twm window */
+TwmWindow *Tmp_win;		/* During event processing points to the
+				 * TwmWindow structure for the window of the
+				 * event.  Also used as a scratch variable. */
 
 /* Used in HandleEnterNotify to remove border highlight from a window
  * that has not recieved a LeaveNotify event because of a pointer grab
@@ -350,6 +352,7 @@ DispatchEvent(void)
   if (XFindContext(dpy, w, TwmContext, (caddr_t *) & Tmp_win) == XCNOENT)
     Tmp_win = NULL;
 
+  /* Set Scr as an implicit argument for operations. */
   if (XFindContext(dpy, w, ScreenContext, (caddr_t *) & Scr) == XCNOENT)
     Scr = FindScreenInfo(WindowOfEvent(&Event));
 
@@ -746,7 +749,7 @@ HandleKeyPress(void)
 
       if (key->cont != C_NAME)
       {
-	ExecuteFunction(key->func, key->action, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+	ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
 
 	if (!(Context = C_ROOT && RootFunction != F_NOFUNCTION))
 	  XUngrabPointer(dpy, CurrentTime);
@@ -765,7 +768,7 @@ HandleKeyPress(void)
 	  if (!strncmp(key->win_name, Tmp_win->name, len))
 	  {
 	    matched = TRUE;
-	    ExecuteFunction(key->func, key->action, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	    ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	    XUngrabPointer(dpy, CurrentTime);
 	  }
 	}
@@ -777,7 +780,7 @@ HandleKeyPress(void)
 	    if (!strncmp(key->win_name, Tmp_win->class.res_name, len))
 	    {
 	      matched = TRUE;
-	      ExecuteFunction(key->func, key->action, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	      ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	      XUngrabPointer(dpy, CurrentTime);
 	    }
 	  }
@@ -789,7 +792,7 @@ HandleKeyPress(void)
 	    if (!strncmp(key->win_name, Tmp_win->class.res_class, len))
 	    {
 	      matched = TRUE;
-	      ExecuteFunction(key->func, key->action, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	      ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	      XUngrabPointer(dpy, CurrentTime);
 	    }
 	  }
@@ -924,6 +927,8 @@ HandlePropertyNotify(void)
     if (!I18N_FetchName(dpy, Tmp_win->w, &prop))
       return;
 
+    int icon_name_follows_window_name = (Tmp_win->icon_name && Tmp_win->name && (! strcmp(Tmp_win->icon_name,Tmp_win->name)));
+
     free_window_names(Tmp_win, True, True, False);
     Tmp_win->full_name = (prop) ? strdup(prop) : NoName;
     Tmp_win->name = (prop) ? strdup(prop) : NoName;
@@ -942,8 +947,14 @@ HandlePropertyNotify(void)
      * the same as the window
      *
      * see that the icon name is it's own memory - djhjr - 2/20/99
+     *
+     * also, because Chrome is dumb and only updates the window name
+     * (not the icon name) on change of tab focus, if the icon name
+     * was the same as the window name, then just go ahead and update
+     * the icon name any time the window name changes.
+     * -douzzer 2017-Dec-2
      */
-    if (!strcmp(Tmp_win->icon_name, NoName))
+    if ((icon_name_follows_window_name && strcmp(Tmp_win->icon_name,Tmp_win->name)) || (!strcmp(Tmp_win->icon_name, NoName)))
     {
       free(Tmp_win->icon_name);
       Tmp_win->icon_name = strdup(Tmp_win->name);
@@ -956,10 +967,14 @@ HandlePropertyNotify(void)
     if (!I18N_GetIconName(dpy, Tmp_win->w, &prop))
       return;
 
-    free_window_names(Tmp_win, False, False, True);
-    Tmp_win->icon_name = (prop) ? strdup(prop) : NoName;
-    if (prop)
+    /* if the icon name already has the ostensibly new value, there's nothing to do. */
+    if (Tmp_win->icon_name && prop && (! strcmp(Tmp_win->icon_name,prop))) {
       free(prop);
+      return;
+    }
+
+    free_window_names(Tmp_win, False, False, True);
+    Tmp_win->icon_name = prop ? : NoName;
 
     RedoIconName();
 
@@ -1379,7 +1394,7 @@ HandleClientMessage(void)
 	XQueryPointer(dpy, Scr->Root, &JunkRoot, &JunkChild,
 		      &(button.xmotion.x_root), &(button.xmotion.y_root), &JunkX, &JunkY, &JunkMask);
 
-	ExecuteFunction(F_ICONIFY, NULLSTR, Event.xany.window, Tmp_win, &button, FRAME, FALSE);
+	ExecuteFunction(F_ICONIFY, NULLSTR, 0, 0, 0, Event.xany.window, Tmp_win, &button, FRAME, FALSE);
 	XUngrabPointer(dpy, CurrentTime);
       }
     }
@@ -2019,6 +2034,10 @@ HandleButtonRelease(void)
       int func = ActiveItem->func;
 
       Action = ActiveItem->action;
+      Action2 = ActiveItem->action2;
+      Action3 = ActiveItem->action3;
+      Action4 = ActiveItem->action4;
+
       switch (func)
       {
       case F_MOVE:
@@ -2028,7 +2047,9 @@ HandleButtonRelease(void)
       default:
 	break;
       }
-      ExecuteFunction(func, Action, ButtonWindow ? ButtonWindow->frame : None, ButtonWindow, &Event, Context, TRUE);
+      ExecuteFunction(func, Action, Action2, Action3, Action4, ButtonWindow ? ButtonWindow->frame : None, ButtonWindow, &Event, Context, TRUE);
+      Action = Action2 = Action3 = Action4 = 0;
+
       Context = C_NO_CONTEXT;
       ButtonWindow = NULL;
 
@@ -2169,7 +2190,7 @@ HandleButtonPress(void)
 
   if (ButtonPressed != -1 && !InfoLines	/* want menus if we have info box */
     )
-  {				/* we got another butt press in addition to one still held
+  {				/* we got another button press in addition to one still held
 				 * down, we need to cancel the operation we were doing
 				 */
     Cancel = TRUE;
@@ -2236,7 +2257,7 @@ HandleButtonPress(void)
 
 	  Context = C_TITLE;
 
-	  ExecuteFunction(tbw->info->func, tbw->info->action, Event.xany.window, Tmp_win, &Event, C_TITLE, FALSE);
+	  ExecuteFunction(tbw->info->func, tbw->info->action, tbw->info->action2, tbw->info->action3, tbw->info->action4, Event.xany.window, Tmp_win, &Event, C_TITLE, FALSE);
 
 	  /*
 	   * For some reason, we don't get the button up event.
@@ -2365,7 +2386,7 @@ HandleButtonPress(void)
     /* make sure we are not trying to move an identify window */
     if (Scr->InfoWindow.win && Event.xany.window != Scr->InfoWindow.win)
     {
-      ExecuteFunction(RootFunction, Action, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+      ExecuteFunction(RootFunction, Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
       if (Scr->StayUpMenus)
       {				/* pop down the menu, if any */
 	if (ActiveMenu != NULL)
@@ -2404,7 +2425,7 @@ HandleButtonPress(void)
       ? Scr->Mouse[MOUSELOC(Event.xbutton.button, Context, modifier)].item->action : NULL;
     ExecuteFunction(Scr->Mouse
 		    [MOUSELOC(Event.xbutton.button, Context, modifier)].func,
-		    Action, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+		    Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
   }
   else if (Scr->DefaultFunction.func != F_NOFUNCTION)
   {
@@ -2415,7 +2436,12 @@ HandleButtonPress(void)
     else
     {
       Action = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action : NULL;
-      ExecuteFunction(Scr->DefaultFunction.func, Action, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+      Action2 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action2 : NULL;
+      Action3 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action3 : NULL;
+      Action4 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action4 : NULL;
+      ExecuteFunction(Scr->DefaultFunction.func, Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+      Action = Action2 = Action3 = Action4 = 0;
+
     }
   }
 }
@@ -2636,7 +2662,11 @@ HandleEnterNotify(void)
    */
   if (UnHighLight_win && UnHighLight_win->w != ewp->window && (ewp->window == Scr->Root || ewp->mode != NotifyGrab))
   {
-    SetBorder(UnHighLight_win, False);	/* application window */
+#ifdef TWM_USE_SLOPPYFOCUS
+    if ((SloppyFocus == FALSE) || (! strcmp(UnHighLight_win->class.res_class,VTWM_DOOR_CLASS)) || ((ewp->window != Scr->Root) && (UnHighLight_win != Tmp_win) && (! (Tmp_win && Tmp_win->iconmgrp))))
+#endif
+      SetBorder(UnHighLight_win, False);	/* application window */
+
     if (UnHighLight_win->list && UnHighLight_win->list->w.win != ewp->window)
       NotActiveIconManager(UnHighLight_win->list);	/* in the icon box */
   }
@@ -3038,6 +3068,7 @@ HandleEnterNotify(void)
   mr->entered = TRUE;
   if (RootFunction == F_NOFUNCTION)
   {
+    /* If there is no deferred operation. */
     MenuRoot *tmp;
 
     for (tmp = ActiveMenu; tmp; tmp = tmp->prev)
@@ -3047,6 +3078,7 @@ HandleEnterNotify(void)
     }
     if (!tmp)
       return;
+    /* Unmap all subordinate menus that were exited. */
     for (tmp = ActiveMenu; tmp != mr; tmp = tmp->prev)
     {
       /* all 'tmp' were 'ActiveMenu'... DUH! - djhjr - 11/16/98 */
@@ -3137,7 +3169,6 @@ HandleLeaveNotify(void)
 
     inicon = (Tmp_win->list && Tmp_win->list->w.win == Event.xcrossing.window);
 
-
     if (FocusRoot)
     {
 
@@ -3192,10 +3223,6 @@ HandleLeaveNotify(void)
 void
 HandleFocusChange(void)
 {
-#if defined DEBUG_STOLENFOCUS
-  extern Bool PrintErrorMessages;
-#endif
-
   if (Tmp_win == NULL)
   {
     if (Event.xfocus.detail == NotifyDetailNone && Event.xfocus.type == FocusIn)
@@ -3274,7 +3301,7 @@ HandleFocusChange(void)
 		    SendTakeFocusMessage(Focus, lastTimestamp);
 		}
 #if defined DEBUG_STOLENFOCUS
-		if (PrintErrorMessages == True)
+		if (PrintErrorMessages)
 		{
 		  if (stamp1 != stamp0)
 		    fprintf(stderr, "HandleFocusChange(1,s=%lu,F=%x,C=%lx{%d,%d}): From '%s' (w=0x0%lx,f=%x) to '%s' (w=0x0%lx,f=%x), %d. attempt to return (%ld milliseconds later).\n", Event.xfocus.serial, ((Scr->TitleFocus==TRUE?512:256)|(SloppyFocus==TRUE?32:16)|(FocusRoot==TRUE?2:1)), (long)JunkChild, HotX, HotY, (Focus?Focus->name:"NULL"), (long)(Focus?Focus->w:None), (Focus?(((Focus->protocols&DoesWmTakeFocus)?32:16)|((!Focus->wmhints||((Focus->wmhints->flags&InputHint)&&Focus->wmhints->input))?2:1)):0), Tmp_win->name, (long)(Tmp_win->w), (Tmp_win?(((Tmp_win->protocols&DoesWmTakeFocus)?32:16)|((!Tmp_win->wmhints||((Tmp_win->wmhints->flags&InputHint)&&Tmp_win->wmhints->input))?2:1)):0), attempts, (stamp1-stamp0));
@@ -3288,7 +3315,7 @@ HandleFocusChange(void)
 	      }
 	      /* focus recovery interval is over; give up, let focus go: */
 #if defined DEBUG_STOLENFOCUS
-	      if (PrintErrorMessages == True)
+	      if (PrintErrorMessages)
 		fprintf(stderr, "HandleFocusChange(2,s=%lu,F=%x): From '%s' (w=0x0%lx,f=%x) to '%s' (w=0x0%lx,f=%x), giving away (%ld milliseconds later).\n", Event.xfocus.serial, ((Scr->TitleFocus==TRUE?512:256)|(SloppyFocus==TRUE?32:16)|(FocusRoot==TRUE?2:1)), (Focus?Focus->name:"NULL"), (long)(Focus?Focus->w:None), (Focus?(((Focus->protocols&DoesWmTakeFocus)?32:16)|((!Focus->wmhints||((Focus->wmhints->flags&InputHint)&&Focus->wmhints->input))?2:1)):0), Tmp_win->name, (long)(Tmp_win->w), (Tmp_win?(((Tmp_win->protocols&DoesWmTakeFocus)?32:16)|((!Tmp_win->wmhints||((Tmp_win->wmhints->flags&InputHint)&&Tmp_win->wmhints->input))?2:1)):0), (stamp1-stamp0));
 #endif
 	    }
@@ -3545,7 +3572,7 @@ HandleXrandrScreenChangeNotify(void)
     button.xbutton.time = CurrentTime;
 
     /* initiate "f.restart": */
-    ExecuteFunction(F_RESTART, NULLSTR, Event.xany.window, NULL, &button, C_ROOT, FALSE);
+    ExecuteFunction(F_RESTART, NULLSTR, 0, 0, 0, Event.xany.window, NULL, &button, C_ROOT, FALSE);
   }
   else
   {

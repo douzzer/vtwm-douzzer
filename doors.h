@@ -39,6 +39,8 @@ typedef struct TwmDoor
   int width, height;		/* size */
 
   int goto_x, goto_y;		/* destination */
+  char *goto_exec;		/* or something to f.exec/f.function */
+  char *goto_backward_exec;	/* or something else to f.exec/f.function */
 
   XClassHint *class;		/* name and class of this door */
 
@@ -48,6 +50,7 @@ typedef struct TwmDoor
   TwmWindow *twin;		/* the twmwindow for this */
 } TwmDoor;
 
+enum door_direction { DOOR_FORWARD, DOOR_BACKWARD };
 
 #endif /* DOORS_H_INCLUDED */
 

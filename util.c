@@ -96,6 +96,8 @@ in this Software without prior written authorization from The Open Group.
 #define ZOOMSLEEP 50000		/* arbitrary, but pleasing, msec value */
 #endif
 
+extern int PrintErrorMessages;
+
 /*
  * All instances of Scr->TitleBevelWidth and Scr->BorderBevelWidth
  * were a hard value of 2 - djhjr - 4/29/98
@@ -604,18 +606,26 @@ LocateStandardColormaps(void)
   return;
 }
 
+
+
+/* Call GetColor if Scr->FirstTime. */
 void
 GetColor(int kind, Pixel * what, char *name)
+{
+  if (Scr->FirstTime)
+    GetColorAlways(kind, what, name);
+}
+
+
+int
+GetColorAlways(int kind, Pixel * what, char *name)
 {
   XColor color, junkcolor;
   Status stat = 0;
   Colormap cmap = Scr->TwmRoot.cmaps.cwins[0]->colormap->c;
 
-  if (!Scr->FirstTime)
-    return;
-
   if (Scr->Monochrome != kind)
-    return;
+    return -1;
 
 #if ( XlibSpecificationRelease < 5 )
   if (!((name[0] == '#')
@@ -636,7 +646,7 @@ GetColor(int kind, Pixel * what, char *name)
     if (!stat)
     {
       fprintf(stderr, "%s:  invalid color name \"%s\"\n", ProgramName, name);
-      return;
+      return -1;
     }
 
     /*
@@ -683,11 +693,12 @@ GetColor(int kind, Pixel * what, char *name)
     else
     {
       fprintf(stderr, "%s:  unable to allocate color \"%s\"\n", ProgramName, name);
-      return;
+      return -1;
     }
   }
 
   *what = color.pixel;
+  return 0;
 }
 
 void
@@ -695,7 +706,6 @@ GetShadeColors(ColorPair * cp)
 {
   XColor xcol;
   Colormap cmap = Scr->TwmRoot.cmaps.cwins[0]->colormap->c;
-  int save;
   float clearfactor;
   float darkfactor;
   char clearcol[32], darkcol[32];
@@ -713,11 +723,8 @@ GetShadeColors(ColorPair * cp)
 	  (unsigned short)(xcol.red * darkfactor),
 	  (unsigned short)(xcol.green * darkfactor), (unsigned short)(xcol.blue * darkfactor));
 
-  save = Scr->FirstTime;
-  Scr->FirstTime = True;
-  GetColor(Scr->Monochrome, &cp->shadc, clearcol);
-  GetColor(Scr->Monochrome, &cp->shadd, darkcol);
-  Scr->FirstTime = save;
+  GetColorAlways(Scr->Monochrome, &cp->shadc, clearcol);
+  GetColorAlways(Scr->Monochrome, &cp->shadd, darkcol);
 }
 
 /*
@@ -874,8 +881,10 @@ GetFont(MyFont * font)
     if (basename2 != ((basename3) ? Scr->DefaultFont.name : font->name))
       free(basename2);
 
-    for (i = 0; i < missing_charset_count_return; i++)
-      fprintf(stderr, "%s: font for charset %s is lacking\n", ProgramName, missing_charset_list_return[i]);
+    if (PrintErrorMessages > 1) {
+      for (i = 0; i < missing_charset_count_return; i++)
+	fprintf(stderr, "%s: font for charset %s is lacking\n", ProgramName, missing_charset_list_return[i]);
+    }
 
     font_extents = XExtentsOfFontSet(font->fontset);
     fnum = XFontsOfFontSet(font->fontset, &xfonts, &font_names);
@@ -2275,7 +2284,7 @@ ReallyGetImage(char *name, int w, int h, int pad, ColorPair cp)
 
   if (name[0] == ':')
   {
-    sprintf(fullname, "%s.%dx%d.%Xx%X.%d", name, w, h, (int)cp.fore, (int)cp.back, Scr->screen);
+    snprintf(fullname, sizeof fullname, "%s.%dx%d.%Xx%X.%d", name, w, h, (int)cp.fore, (int)cp.back, Scr->screen);
     if ((image = (Image *) LookInNameList(*list, fullname)) == NULL)
     {
       for (i = 0; i < sizeof(pmtab) / sizeof(pmtab[0]); i++)
@@ -2311,7 +2320,7 @@ ReallyGetImage(char *name, int w, int h, int pad, ColorPair cp)
     /*
      * Need screen number in fullname since screens may have different GCs.
      */
-    sprintf(fullname, "%s.%Xx%X.%d", name, (int)cp.fore, (int)cp.back, (int)Scr->screen);
+    snprintf(fullname, sizeof fullname, "%s.%Xx%X.%d", name, (int)cp.fore, (int)cp.back, (int)Scr->screen);
     if ((image = (Image *) LookInNameList(*list, fullname)) == NULL)
     {
       if ((image = LoadBitmapImage(name, cp)) == NULL)
@@ -2890,7 +2899,6 @@ ComputeTiledAreaBoundingBox (struct ScreenInfo *scr)
 int
 GetXineramaTilesGeometries (struct ScreenInfo *scr)
 {
-  extern Bool PrintErrorMessages;
   XineramaScreenInfo *si;
   int r, i;
 
@@ -2928,7 +2936,7 @@ GetXineramaTilesGeometries (struct ScreenInfo *scr)
 #endif
 	  if (scr->tile_names != NULL) {
 	    char name[8+6+1];
-	    sprintf (name, "Xinerama%d", (si[i].screen_number%1000000));
+	    snprintf (name, sizeof name, "Xinerama%d", (si[i].screen_number%1000000));
 	    name[sizeof(name)-1] = '\0';
 	    scr->tile_names[i] = strdup (name);
 	  }

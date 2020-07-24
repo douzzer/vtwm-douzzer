@@ -66,6 +66,11 @@ typedef struct _StdCmap
 #define SIZE_VINDENT 5
 #endif
 
+/*
+ * Information for each screen, in the X sense:  A screen is one monitor or
+ * device; there may be more than one screen in the display which is the
+ * collection of hardware for a single user.
+ */
 typedef struct ScreenInfo
 {
   int screen;			/* the default screen */
@@ -531,11 +536,15 @@ typedef struct ScreenInfo
   int AutoPanExtraWarp;		/* # of extra pixels to warp - DSE */
   int RealScreenBorderWidth;	/* in virtual desktop - DSE */
   int AutoPanWarpWithRespectToRealScreen;	/* percent - DSE */
+
+  int last_wstatus;
 } ScreenInfo;
 
 extern int MultiScreen;
 extern int NumScreens;
 extern ScreenInfo **ScreenList;
+/* The screen on which the current activity is happening.
+ * Used as an implicit argument to functions. */
 extern ScreenInfo *Scr;
 extern int FirstScreen;
 

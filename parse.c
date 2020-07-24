@@ -86,7 +86,7 @@ extern char *defTwmrc[];	/* default bindings */
 #ifndef NO_M4_SUPPORT
 #define Resolution(pixels, mm) ((((pixels) * 100000 / (mm)) + 50) / 100)
 #define M4_MAXDIGITS 21		/* greater than the number of digits in a long int */
-extern Bool PrintErrorMessages;
+extern int PrintErrorMessages;
 static char *make_m4_cmdline(char *display_name, char *cp, char *m4_option);
 #endif
 
@@ -175,7 +175,7 @@ ParseTwmrc(char *filename)
 	if (!filename)
 	{
 	  cp = tmpfilename;
-	  (void)sprintf(tmpfilename, "%s/.vtwmrc.%d", Home, Scr->screen);
+	  (void)snprintf(tmpfilename, sizeof tmpfilename, "%s/.vtwmrc.%d", Home, Scr->screen);
 	  break;
 	}
 	continue;
@@ -195,7 +195,7 @@ ParseTwmrc(char *filename)
 	if (!filename)
 	{
 	  cp = tmpfilename;
-	  (void)sprintf(tmpfilename, "%s/.twmrc.%d", Home, Scr->screen);
+	  (void)snprintf(tmpfilename, sizeof tmpfilename, "%s/.twmrc.%d", Home, Scr->screen);
 	  break;
 	}
 	continue;
@@ -659,16 +659,22 @@ static TwmKeyword keytable[] = {
   {"f.bottomzoom", FKEYWORD, F_BOTTOMZOOM},
   {"f.circledown", FKEYWORD, F_CIRCLEDOWN},
   {"f.circleup", FKEYWORD, F_CIRCLEUP},
+  {"f.clipotherdoorname", FSKEYWORD, F_CLIPOTHERDOORNAME},
   {"f.colormap", FSKEYWORD, F_COLORMAP},
+  {"f.colorotherdoor", FS2KEYWORD, F_COLOROTHERDOOR},
   {"f.cut", FSKEYWORD, F_CUT},
   {"f.cutfile", FKEYWORD, F_CUTFILE},
+  {"f.cutfile2", FSKEYWORD, F_CUTFILE2},
+  {"f.cutnolf", FSKEYWORD, F_CUTNOLF},
   {"f.deiconify", FKEYWORD, F_DEICONIFY},
   {"f.delete", FKEYWORD, F_DELETE},
   {"f.deletedoor", FKEYWORD, F_DELETEDOOR},
+  {"f.deletedoorbyname", FSKEYWORD, F_DELETEDOORBYNAME},
   {"f.deltastop", FKEYWORD, F_DELTASTOP},
   {"f.destroy", FKEYWORD, F_DESTROY},
   {"f.downiconmgr", FKEYWORD, F_DOWNICONMGR},
   {"f.enterdoor", FKEYWORD, F_ENTERDOOR},
+  {"f.enterdoorbackwards", FKEYWORD, F_ENTERDOORBACKWARDS},
   {"f.exec", FSKEYWORD, F_EXEC},
   {"f.file", FSKEYWORD, F_FILE},
   {"f.focus", FKEYWORD, F_FOCUS},
@@ -676,6 +682,10 @@ static TwmKeyword keytable[] = {
   {"f.forwiconmgr", FKEYWORD, F_FORWICONMGR},
   {"f.fullzoom", FKEYWORD, F_FULLZOOM},
   {"f.function", FSKEYWORD, F_FUNCTION},
+  {"f.functionifclipeq", FS2KEYWORD, F_FUNCTIONIFCLIPEQ},
+  {"f.functionifclipeqelse", FS3KEYWORD, F_FUNCTIONIFCLIPEQELSE},
+  {"f.functionifexitvaleq", FS2KEYWORD, F_FUNCTIONIFEXITVALEQ},
+  {"f.functionifexitvaleqelse", FS3KEYWORD, F_FUNCTIONIFEXITVALEQELSE},
   {"f.hbzoom", FKEYWORD, F_BOTTOMZOOM},
   {"f.hidedesktopdisplay", FKEYWORD, F_HIDEDESKTOP},
   {"f.hideiconmgr", FKEYWORD, F_HIDELIST},
@@ -694,7 +704,11 @@ static TwmKeyword keytable[] = {
   {"f.nail", FKEYWORD, F_NAIL},
   {"f.nailedabove", FKEYWORD, F_STICKYABOVE},
   {"f.namedoor", FKEYWORD, F_NAMEDOOR},
+  {"f.nameotherdoor", FSKEYWORD, F_NAMEOTHERDOOR},
+  {"f.nameotherdoor2", FS2KEYWORD, F_NAMEOTHERDOOR2},
   {"f.newdoor", FKEYWORD, F_NEWDOOR},
+  {"f.newdoor3", FS3KEYWORD, F_NEWDOOR3},
+  {"f.newdoor4", FS4KEYWORD, F_NEWDOOR4},
   {"f.nexticonmgr", FKEYWORD, F_NEXTICONMGR},
   {"f.nop", FKEYWORD, F_NOP},
   {"f.pandown", FSKEYWORD, F_PANDOWN},
@@ -713,6 +727,12 @@ static TwmKeyword keytable[] = {
   {"f.resize", FKEYWORD, F_RESIZE},
   {"f.resizeto", FSKEYWORD, F_RESIZETO},
   {"f.restart", FKEYWORD, F_RESTART},
+  {"f.returnifclipeq", FSKEYWORD, F_RETURNIFCLIPEQ},
+  {"f.returnifclipneq", FSKEYWORD, F_RETURNIFCLIPNEQ},
+  {"f.returnifexitvaleq", FSKEYWORD, F_RETURNIFEXITVALEQ},
+  {"f.returnifexitvalneq", FSKEYWORD, F_RETURNIFEXITVALNEQ},
+  {"f.returnifretvalnok", FKEYWORD, F_RETURNIFRETVALNOK},
+  {"f.returnifretvalok", FKEYWORD, F_RETURNIFRETVALOK},
   {"f.righticonmgr", FKEYWORD, F_RIGHTICONMGR},
   {"f.rightzoom", FKEYWORD, F_RIGHTZOOM},
   {"f.ring", FKEYWORD, F_RING},
@@ -2212,31 +2232,43 @@ make_m4_cmdline(char *display_name, char *cp, char *m4_option)
     return (NULL);
   }
 
-  /*
-   * Non-SysV systems - specifically, BSD-derived systems - return a
-   * pointer to the string, not its length.
-   */
-  sprintf(m4_cmdline, m4_lines[0], Home, Scr->MyDisplayWidth, Scr->MyDisplayHeight, is_sound);
-  cmd_len = strlen(m4_cmdline);
-  sprintf(m4_cmdline + cmd_len, m4_lines[1], Scr->d_depth, Scr->d_visual->bits_per_rgb, vc, is_xpm);
-  cmd_len = strlen(m4_cmdline);
-  sprintf(m4_cmdline + cmd_len, m4_lines[2], is_color,
+  size_t space = cmd_len;
+  char *lp = m4_cmdline;
+  if ((cmd_len=snprintf(lp, space, m4_lines[0], Home, Scr->MyDisplayWidth, Scr->MyDisplayHeight, is_sound)) >= space)
+    goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
+  if ((cmd_len=snprintf(lp, space, m4_lines[1], Scr->d_depth, Scr->d_visual->bits_per_rgb, vc, is_xpm)) >= space)
+    goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
+  if ((cmd_len=snprintf(lp, space, m4_lines[2], is_color,
 	  Resolution(Scr->MyDisplayWidth, DisplayWidthMM(dpy, Scr->screen)),
-	  Resolution(Scr->MyDisplayHeight, DisplayHeightMM(dpy, Scr->screen)));
-  cmd_len = strlen(m4_cmdline);
-  sprintf(m4_cmdline + cmd_len, m4_lines[3], is_regex, env_username, server, client);
-  cmd_len = strlen(m4_cmdline);
-  sprintf(m4_cmdline + cmd_len, m4_lines[4], hostname, ProtocolVersion(dpy));
-  cmd_len = strlen(m4_cmdline);
-  sprintf(m4_cmdline + cmd_len, m4_lines[5], ProtocolRevision(dpy), ServerVendor(dpy), VendorRelease(dpy));
+			Resolution(Scr->MyDisplayHeight, DisplayHeightMM(dpy, Scr->screen)))) >= space)
+    goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
+  if ((cmd_len=snprintf(lp, space, m4_lines[3], is_regex, env_username, server, client)) >= space)
+    goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
+  if ((cmd_len=snprintf(lp, space, m4_lines[4], hostname, ProtocolVersion(dpy))) >= space)
+    goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
+  if ((cmd_len=snprintf(lp, space, m4_lines[5], ProtocolRevision(dpy), ServerVendor(dpy), VendorRelease(dpy))) >= space)
+    goto buffer_overrun;
 
   cmd_len = strlen(m4_cmdline);
   if (opt_len)
   {
-    sprintf(m4_cmdline + cmd_len, " %*.*s", opt_len, opt_len, m4_option);
-    cmd_len = strlen(m4_cmdline);
+    if ((cmd_len=snprintf(lp, space, " %*.*s", opt_len, opt_len, m4_option)) >= space)
+      goto buffer_overrun;
+  lp += cmd_len;
+  space -= cmd_len;
   }
-  sprintf(m4_cmdline + cmd_len, " < %s", cp);
+  if (snprintf(lp, space, " < %s", cp) >= space)
+    goto buffer_overrun;
 
   if (PrintErrorMessages)
     fprintf(stderr, "\n%s: %s\n", ProgramName, m4_cmdline);
@@ -2248,6 +2280,11 @@ make_m4_cmdline(char *display_name, char *cp, char *m4_option)
   free(client);
 
   return (m4_cmdline);
+
+  buffer_overrun:
+  free(m4_cmdline);
+  fprintf(stderr,"%s: buffer overrun in make_m4_cmdline()\n",ProgramName);
+  return 0;
 }
 #endif /* NO_M4_SUPPORT */
 

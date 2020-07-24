@@ -54,9 +54,12 @@ extern int CurrentDragX;
 extern int CurrentDragY;
 
 extern int ButtonPressed;
-extern int Cancel;
+extern int Cancel;		/* Normally false.  If true, indicates that no
+				 * operation should be done in response to
+				 * button release. */
 
-extern XEvent Event;
+extern XEvent Event;		/* the current event, an implicit argument to
+				 * some operations */
 
 #endif /* _EVENTS_ */
 

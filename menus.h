@@ -59,6 +59,9 @@ typedef struct MenuItem
   struct MenuRoot *root;	/* back pointer to my MenuRoot */
   char *item;			/* the character string displayed */
   char *action;			/* action to be performed */
+  char *action2;		/* optional arg 1 */
+  char *action3;		/* optional arg 2 */
+  char *action4;		/* optional arg 3 */
 
   ColorPair normal;		/* unhiglight colors */
   ColorPair highlight;		/* highlight colors */
@@ -74,12 +77,14 @@ typedef struct MenuItem
 
 } MenuItem;
 
+/* The structure for the whole of the menu. */
 typedef struct MenuRoot
 {
   struct MenuItem *first;	/* first item in menu */
   struct MenuItem *last;	/* last item in menu */
-  struct MenuRoot *prev;	/* previous root menu if pull right */
-  struct MenuRoot *next;	/* next in list of root menus */
+  struct MenuRoot *prev;	/* the parent MenuRoot if this menu was entered
+				 * by pulling right from another menu */
+  struct MenuRoot *next;	/* next in the list of MenuRoots */
   char *name;			/* name of root */
   MyWindow w;			/* the window of the menu */
   Window shadow;		/* the shadow window */
@@ -91,7 +96,8 @@ typedef struct MenuRoot
   short width;			/* width of the menu */
   short items;			/* number of items in the menu */
   short pull;			/* is there a pull right entry? */
-  short entered;		/* EnterNotify following pop up */
+  short entered;		/* EnterNotify following pop up of this menu
+				 * has been processed */
   short real_menu;		/* this is a real menu */
 
   short too_tall;		/* menu taller than display? */
@@ -133,6 +139,9 @@ typedef struct FuncKey
   int func;			/* function to perform */
   char *win_name;		/* window name (if any) */
   char *action;			/* action string (if any) */
+  char *action2;		/* action string (if any) */
+  char *action3;		/* action string (if any) */
+  char *action4;		/* action string (if any) */
 } FuncKey;
 
 extern int RootFunction;

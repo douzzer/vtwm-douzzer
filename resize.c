@@ -1888,7 +1888,7 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
 
 
   if (tmp_win->zoomed == flag
-	&& flag != F_PANELGEOMETRYZOOM && flag != F_PANELGEOMETRYMOVE)
+      && flag != F_RESIZETO && flag != F_PANELGEOMETRYZOOM && flag != F_PANELGEOMETRYMOVE)
   {
     unzoom:;
 
@@ -2521,6 +2521,14 @@ fullzoom(int tile, TwmWindow * tmp_win, int flag)
 
       if (origMask & YNegative)
 	dragy = JunkY-dragHeight-frame_bw_times_2;
+
+      if (tmp_win->zoomed == flag)
+      {
+	tmp_win->save_frame_width = dragWidth;
+	tmp_win->save_frame_height = dragHeight;
+	tmp_win->save_frame_x = dragx;
+	tmp_win->save_frame_y = dragy;
+      }
 
       break;
     }
