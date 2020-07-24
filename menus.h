@@ -61,6 +61,7 @@ typedef struct MenuItem
   char *action;			/* action to be performed */
   char *action2;		/* optional arg 1 */
   char *action3;		/* optional arg 2 */
+  char *action4;		/* optional arg 3 */
 
   ColorPair normal;		/* unhiglight colors */
   ColorPair highlight;		/* highlight colors */
@@ -140,6 +141,7 @@ typedef struct FuncKey
   char *action;			/* action string (if any) */
   char *action2;		/* action string (if any) */
   char *action3;		/* action string (if any) */
+  char *action4;		/* action string (if any) */
 } FuncKey;
 
 extern int RootFunction;

@@ -186,12 +186,24 @@
 
 #define F_CUTNOLF		145	/* string */
 #define F_CUTFILE2		146	/* string */
-#define F_NAMEOTHERDOOR		147	/* string */
-#define F_NAMEOTHERDOOR2	148	/* string string */
-#define F_COLOROTHERDOOR	149	/* string string */
-#define F_FUNCTIONIFCLIPEQ	150	/* string string */
-#define F_FUNCTIONIFCLIPEQELSE	151	/* string string string */
-#define F_CLIPOTHERDOORNAME	152
+#define F_NEWDOOR3		147	/* string string string */
+#define F_NEWDOOR4		148	/* string string string string */
+#define F_DELETEDOORBYNAME	149	/* string */
+#define F_NAMEOTHERDOOR		150	/* string */
+#define F_NAMEOTHERDOOR2	151	/* string string */
+#define F_COLOROTHERDOOR	152	/* string string */
+#define F_FUNCTIONIFCLIPEQ	153	/* string string */
+#define F_FUNCTIONIFCLIPEQELSE	154	/* string string string */
+#define F_CLIPOTHERDOORNAME	155
+#define F_RETURNIFCLIPEQ	156
+#define F_RETURNIFCLIPNEQ	157
+#define F_FUNCTIONIFEXITVALEQ	158
+#define F_FUNCTIONIFEXITVALEQELSE	159
+#define F_RETURNIFEXITVALEQ	160
+#define F_RETURNIFEXITVALNEQ	161
+#define F_RETURNIFRETVALOK	162
+#define F_RETURNIFRETVALNOK	163
+#define F_ENTERDOORBACKWARDS	164
 
 #define D_NORTH			1
 #define D_SOUTH			2

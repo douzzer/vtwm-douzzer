@@ -116,6 +116,8 @@ lastmake.c: FORCE
 
 gram.h: gram.c
 
+gram.h gram.c: gram.y
+
 #nexpm: contrib/nexpm/nexpm.c
 #	$(vtwm_LINK) -o $@ -Icontrib/nexpm $^ $(vtwm_LDADD) $(LIBS)
 

@@ -226,6 +226,7 @@ typedef struct _TitleButton
   char *action;			/* optional action arg */
   char *action2;		/* optional action arg */
   char *action3;		/* optional action arg */
+  char *action4;		/* optional action arg */
   struct MenuRoot *menuroot;	/* menu to pop on F_MENU */
   Bool rightside;		/* t: on right, f: on left */
 } TitleButton;

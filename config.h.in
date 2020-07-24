@@ -3,8 +3,20 @@
 /* Define to 1 if you have the `mkstemp' function. */
 #undef HAS_MKSTEMP
 
+/* Define to 1 if you have the `setpgid' function. */
+#undef HAS_SETPGID
+
+/* Define to 1 if you have the `setpgrp' function. */
+#undef HAS_SETPGRP
+
+/* Define to 1 if you have the `setsid' function. */
+#undef HAS_SETSID
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `esd' library (-lesd). */
+#undef HAVE_LIBESD
 
 /* Define to 1 if you have the `rplay' library (-lrplay). */
 #undef HAVE_LIBRPLAY
@@ -48,31 +60,13 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Major version of this package */
-#undef PACKAGE_VERSION_MAJOR
-
-/* Minor version of this package */
-#undef PACKAGE_VERSION_MINOR
-
-/* Patch version of this package */
-#undef PACKAGE_VERSION_PATCHLEVEL
-
-/* Shell */
-#undef BOURNE_SHELL
-
-/* setpgid */
-#undef HAS_SETPGID
-
-/* setsid */
-#undef HAS_SETSID
-
-/* setpgrp */
-#undef HAS_SETPGRP
-
-/* setpgrp_void */
+/* Define to 1 if the `setpgrp' function takes no argument. */
 #undef SETPGRP_VOID
 
 /* Define to 1 if you have the ANSI C header files. */

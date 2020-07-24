@@ -536,6 +536,8 @@ typedef struct ScreenInfo
   int AutoPanExtraWarp;		/* # of extra pixels to warp - DSE */
   int RealScreenBorderWidth;	/* in virtual desktop - DSE */
   int AutoPanWarpWithRespectToRealScreen;	/* percent - DSE */
+
+  int last_wstatus;
 } ScreenInfo;
 
 extern int MultiScreen;

@@ -86,7 +86,7 @@ extern int PrintErrorMessages;
 
 #define MAX_X_EVENT 256
 event_proc EventHandler[MAX_X_EVENT];	/* event handler jump table */
-char *Action = 0, *Action2 = 0, *Action3 = 0;
+char *Action = 0, *Action2 = 0, *Action3 = 0, *Action4 = 0;
 int Context = C_NO_CONTEXT;	/* current button press context */
 TwmWindow *ButtonWindow;	/* button press window structure */
 XEvent ButtonEvent;		/* button press event */
@@ -749,7 +749,7 @@ HandleKeyPress(void)
 
       if (key->cont != C_NAME)
       {
-	ExecuteFunction(key->func, key->action, key->action2, key->action3, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+	ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
 
 	if (!(Context = C_ROOT && RootFunction != F_NOFUNCTION))
 	  XUngrabPointer(dpy, CurrentTime);
@@ -768,7 +768,7 @@ HandleKeyPress(void)
 	  if (!strncmp(key->win_name, Tmp_win->name, len))
 	  {
 	    matched = TRUE;
-	    ExecuteFunction(key->func, key->action, key->action2, key->action3, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	    ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	    XUngrabPointer(dpy, CurrentTime);
 	  }
 	}
@@ -780,7 +780,7 @@ HandleKeyPress(void)
 	    if (!strncmp(key->win_name, Tmp_win->class.res_name, len))
 	    {
 	      matched = TRUE;
-	      ExecuteFunction(key->func, key->action, key->action2, key->action3, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	      ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	      XUngrabPointer(dpy, CurrentTime);
 	    }
 	  }
@@ -792,7 +792,7 @@ HandleKeyPress(void)
 	    if (!strncmp(key->win_name, Tmp_win->class.res_class, len))
 	    {
 	      matched = TRUE;
-	      ExecuteFunction(key->func, key->action, key->action2, key->action3, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
+	      ExecuteFunction(key->func, key->action, key->action2, key->action3, key->action4, Tmp_win->frame, Tmp_win, &Event, C_FRAME, FALSE);
 	      XUngrabPointer(dpy, CurrentTime);
 	    }
 	  }
@@ -1394,7 +1394,7 @@ HandleClientMessage(void)
 	XQueryPointer(dpy, Scr->Root, &JunkRoot, &JunkChild,
 		      &(button.xmotion.x_root), &(button.xmotion.y_root), &JunkX, &JunkY, &JunkMask);
 
-	ExecuteFunction(F_ICONIFY, NULLSTR, 0, 0, Event.xany.window, Tmp_win, &button, FRAME, FALSE);
+	ExecuteFunction(F_ICONIFY, NULLSTR, 0, 0, 0, Event.xany.window, Tmp_win, &button, FRAME, FALSE);
 	XUngrabPointer(dpy, CurrentTime);
       }
     }
@@ -2036,6 +2036,7 @@ HandleButtonRelease(void)
       Action = ActiveItem->action;
       Action2 = ActiveItem->action2;
       Action3 = ActiveItem->action3;
+      Action4 = ActiveItem->action4;
 
       switch (func)
       {
@@ -2046,8 +2047,8 @@ HandleButtonRelease(void)
       default:
 	break;
       }
-      ExecuteFunction(func, Action, Action2, Action3, ButtonWindow ? ButtonWindow->frame : None, ButtonWindow, &Event, Context, TRUE);
-      Action = Action2 = Action3 = 0;
+      ExecuteFunction(func, Action, Action2, Action3, Action4, ButtonWindow ? ButtonWindow->frame : None, ButtonWindow, &Event, Context, TRUE);
+      Action = Action2 = Action3 = Action4 = 0;
 
       Context = C_NO_CONTEXT;
       ButtonWindow = NULL;
@@ -2256,7 +2257,7 @@ HandleButtonPress(void)
 
 	  Context = C_TITLE;
 
-	  ExecuteFunction(tbw->info->func, tbw->info->action, tbw->info->action2, tbw->info->action3, Event.xany.window, Tmp_win, &Event, C_TITLE, FALSE);
+	  ExecuteFunction(tbw->info->func, tbw->info->action, tbw->info->action2, tbw->info->action3, tbw->info->action4, Event.xany.window, Tmp_win, &Event, C_TITLE, FALSE);
 
 	  /*
 	   * For some reason, we don't get the button up event.
@@ -2385,7 +2386,7 @@ HandleButtonPress(void)
     /* make sure we are not trying to move an identify window */
     if (Scr->InfoWindow.win && Event.xany.window != Scr->InfoWindow.win)
     {
-      ExecuteFunction(RootFunction, Action, Action2, Action3, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+      ExecuteFunction(RootFunction, Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
       if (Scr->StayUpMenus)
       {				/* pop down the menu, if any */
 	if (ActiveMenu != NULL)
@@ -2424,7 +2425,7 @@ HandleButtonPress(void)
       ? Scr->Mouse[MOUSELOC(Event.xbutton.button, Context, modifier)].item->action : NULL;
     ExecuteFunction(Scr->Mouse
 		    [MOUSELOC(Event.xbutton.button, Context, modifier)].func,
-		    Action, Action2, Action3, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+		    Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
   }
   else if (Scr->DefaultFunction.func != F_NOFUNCTION)
   {
@@ -2437,8 +2438,9 @@ HandleButtonPress(void)
       Action = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action : NULL;
       Action2 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action2 : NULL;
       Action3 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action3 : NULL;
-      ExecuteFunction(Scr->DefaultFunction.func, Action, Action2, Action3, Event.xany.window, Tmp_win, &Event, Context, FALSE);
-      Action = Action2 = Action3 = 0;
+      Action4 = Scr->DefaultFunction.item ? Scr->DefaultFunction.item->action4 : NULL;
+      ExecuteFunction(Scr->DefaultFunction.func, Action, Action2, Action3, Action4, Event.xany.window, Tmp_win, &Event, Context, FALSE);
+      Action = Action2 = Action3 = Action4 = 0;
 
     }
   }
@@ -3570,7 +3572,7 @@ HandleXrandrScreenChangeNotify(void)
     button.xbutton.time = CurrentTime;
 
     /* initiate "f.restart": */
-    ExecuteFunction(F_RESTART, NULLSTR, 0, 0, Event.xany.window, NULL, &button, C_ROOT, FALSE);
+    ExecuteFunction(F_RESTART, NULLSTR, 0, 0, 0, Event.xany.window, NULL, &button, C_ROOT, FALSE);
   }
   else
   {

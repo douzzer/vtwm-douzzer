@@ -30,12 +30,12 @@
 #include "parse.h" /* for F_ENTERDOOR */
 
 extern void SetMapStateProp(TwmWindow * tmp_win, int state);
-extern TwmDoor *door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec);
+extern TwmDoor *door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec, char *backward_dexec, char *initial_text);
 extern void HandleExpose(void);
 extern void SetupWindow(TwmWindow * tmp_win, int x, int y, int w, int h, int bw);
 
 TwmDoor *
-door_add(char *name, char *position, char *destination)
+door_add(char *name, char *position, char *destination, char *backward_destination, char *initial_text)
 {
   int px, py, pw, ph, dx, dy, bw;
 
@@ -106,38 +106,59 @@ door_add(char *name, char *position, char *destination)
     dx = dy = 0;
   } else {
 
-  JunkMask = XParseGeometry(destination, &JunkX, &JunkY, &JunkWidth, &JunkHeight);
-  if ((JunkMask & (XValue | YValue)) != (XValue | YValue))
-  {
-    twmrc_error_prefix();
-    fprintf(stderr, "bad Door destination \"%s\"\n", destination);
-    return NULL;
-  }
-  if (JunkX < 0 || JunkY < 0)
-  {
-    twmrc_error_prefix();
-    fprintf(stderr, "silly Door destination \"%s\"\n", destination);
-    return NULL;
-  }
-  dx = JunkX;
-  dy = JunkY;
+    JunkMask = XParseGeometry(destination, &JunkX, &JunkY, &JunkWidth, &JunkHeight);
+    if ((JunkMask & (XValue | YValue)) != (XValue | YValue))
+      {
+	twmrc_error_prefix();
+	fprintf(stderr, "bad Door destination \"%s\"\n", destination);
+	return NULL;
+      }
+    if (JunkX < 0 || JunkY < 0)
+      {
+	twmrc_error_prefix();
+	fprintf(stderr, "silly Door destination \"%s\"\n", destination);
+	return NULL;
+      }
+    dx = JunkX;
+    dy = JunkY;
 
   }
 
-  return (door_add_internal(name, px, py, pw, ph, dx, dy, dexec));
+  char *backward_dexec = 0;
+  if (backward_destination) {
+    if ((*backward_destination == '!') || isalpha(*backward_destination)) {
+      backward_dexec = backward_destination;
+      dx = dy = 0;
+    } else {
+      twmrc_error_prefix();
+      fprintf(stderr, "bad backward Door destination \"%s\" (must be a function name or a command)\n", backward_destination);
+      return NULL;
+    }
+  }
+
+  return (door_add_internal(name, px, py, pw, ph, dx, dy, dexec, backward_dexec, initial_text));
 }
 
 TwmDoor *
-door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec)
+door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, char *dexec, char *backward_dexec, char *initial_text)
 {
   TwmDoor *new;
+
+  /* don't allow multiple doors with same name. */
+
+  for (TwmDoor *d = Scr->Doors; d; d = d->next) {
+    if (! strcmp(d->class->res_name,name)) {
+      fprintf(stderr, "%s: door named \"%s\" already exists.\n", ProgramName, name);
+      return 0;
+    }
+  }
 
   new = (TwmDoor *) malloc(sizeof(TwmDoor));
   if (! new) {
     perror("malloc");
     return 0;
   }
-  new->name = strdup(name);
+  new->name = strdup(initial_text ? initial_text : name);
   if (! new->name) {
     perror("malloc");
     free(new);
@@ -146,7 +167,13 @@ door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, ch
 
   /* this for getting colors */
   new->class = XAllocClassHint();
-  new->class->res_name = new->name;
+  new->class->res_name = strdup(name);
+  if (! new->class->res_name) {
+    perror("malloc");
+    free(new->name);
+    free(new);
+    return 0;
+  }
   new->class->res_class = strdup(VTWM_DOOR_CLASS);
 
   new->x = px;
@@ -159,12 +186,25 @@ door_add_internal(char *name, int px, int py, int pw, int ph, int dx, int dy, ch
     new->goto_exec = strdup(dexec);
     if (! new->goto_exec) {
       free(new->name);
+      free(new->class->res_name);
       free(new);
       perror("malloc");
       return 0;
     }
   } else
     new->goto_exec = 0;
+
+  if (backward_dexec) {
+    new->goto_backward_exec = strdup(backward_dexec);
+    if (! new->goto_backward_exec) {
+      free(new->name);
+      free(new->class->res_name);
+      free(new);
+      perror("malloc");
+      return 0;
+    }
+  } else
+    new->goto_backward_exec = 0;
 
   /* link into the list */
   new->prev = NULL;
@@ -242,8 +282,8 @@ door_open(TwmDoor * tmp_door)
   XSetClassHint(dpy, w, tmp_door->class);
 
   /* set the name on both */
-  XStoreName(dpy, tmp_door->w.win, tmp_door->name);
-  XStoreName(dpy, w, tmp_door->name);
+  XStoreName(dpy, tmp_door->w.win, tmp_door->class->res_name);
+  XStoreName(dpy, w, tmp_door->class->res_name);
 
   XDefineCursor(dpy, w, Scr->FrameCursor);
   XDefineCursor(dpy, tmp_door->w.win, Scr->DoorCursor);
@@ -281,7 +321,7 @@ door_open_all(void)
  * go into a door
  */
 void
-door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
+door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp, enum door_direction direction)
 {
   Window w = tmp_win->w;
 
@@ -293,9 +333,11 @@ door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
       /* not a door ! */
       return;
 
-  if (d->goto_exec) {
+  const char *goto_exec = (direction == DOOR_FORWARD) ? d->goto_exec : (direction == DOOR_BACKWARD) ? d->goto_backward_exec : 0;
 
-    if (*d->goto_exec == '!') {
+  if (goto_exec) {
+
+    if (*goto_exec == '!') {
 
       /* f.exec code adapted from menus.c ExecuteFunction() F_EXEC case. */
       ScreenInfo *scr;
@@ -319,7 +361,7 @@ door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
 	  XSync(dpy, False);
 	}
 
-      Execute(scr, d->goto_exec+1);
+      Execute(scr, goto_exec+1);
 
     } else {
       /* f.function code adapted from menus.c ExecuteFunction() F_FUNCTION case. */
@@ -328,8 +370,8 @@ door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
       MenuItem *mitem;
       Cursor cursor;
 
-      if ((mroot = FindMenuRoot(d->goto_exec)) == NULL) {
-	  fprintf(stderr, "%s: couldn't find function \"%s\"\n", ProgramName, d->goto_exec);
+      if ((mroot = FindMenuRoot(goto_exec)) == NULL) {
+	  fprintf(stderr, "%s: couldn't find function \"%s\"\n", ProgramName, goto_exec);
 	  return;
       }
 
@@ -338,13 +380,18 @@ door_enter(TwmWindow * tmp_win, TwmDoor * d, XEvent * eventp)
       else {
 	for (mitem = mroot->first; mitem != NULL; mitem = mitem->next)
 	  {
-	    if (! ExecuteFunction(mitem->func, mitem->action, mitem->action2, mitem->action3, w, tmp_win, eventp, C_DOOR, 0 /* pulldown */))
+	    if (! ExecuteFunction(mitem->func, mitem->action, mitem->action2, mitem->action3, mitem->action4, w, tmp_win, eventp, C_DOOR, 0 /* pulldown */))
 	      break;
 	  }
       }
 
     }
 
+    return;
+  }
+
+  if (d->goto_exec || d->goto_backward_exec || (direction != DOOR_FORWARD)) {
+    DoAudible();
     return;
   }
 
@@ -395,6 +442,7 @@ door_delete(Window w, TwmDoor * d)
     MyXftDrawDestroy(d->w.xft);
 #endif
   XDestroyWindow(dpy, w);
+  free(d->class->res_name);
   free(d->class->res_class);
   XFree(d->class);
   free(d->name);
@@ -402,6 +450,22 @@ door_delete(Window w, TwmDoor * d)
     free(d->goto_exec);
   free(d);
 }
+
+int
+door_delete_by_name(char *name)
+{
+  TwmDoor *tmp_door;
+
+  for (tmp_door = Scr->Doors; tmp_door; tmp_door = tmp_door->next) {
+    if (! strcmp(tmp_door->twin->name,name)) {
+      door_delete(tmp_door->twin->w, tmp_door);
+      return 0;
+    }
+  }
+  fprintf(stderr,"%s: no door found with name \"%s\"\n",ProgramName,name);
+  return -1;
+}
+
 
 /*
  * create a new door on the fly
@@ -414,7 +478,10 @@ door_new(void)
 
   sprintf(name, "+%d+%d", Scr->VirtualDesktopX, Scr->VirtualDesktopY);
 
-  d = door_add_internal(name, -1, -1, -1, -1, Scr->VirtualDesktopX, Scr->VirtualDesktopY, 0);
+  d = door_add_internal(name, -1, -1, -1, -1, Scr->VirtualDesktopX, Scr->VirtualDesktopY, 0, 0, 0);
+
+  if (! d)
+    return;
 
   door_open(d);
 }

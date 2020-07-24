@@ -979,7 +979,7 @@ main(int argc, char **argv, char **environ)
 #define VTWM_PROFILE "VTWM Profile"
   if (FindMenuRoot(VTWM_PROFILE))
   {
-    ExecuteFunction(F_FUNCTION, VTWM_PROFILE, 0, 0, Event.xany.window, &Scr->TwmRoot, &Event, C_NO_CONTEXT, FALSE);
+    ExecuteFunction(F_FUNCTION, VTWM_PROFILE, 0, 0, 0, Event.xany.window, &Scr->TwmRoot, &Event, C_NO_CONTEXT, FALSE);
   }
 
 #ifdef SOUND_SUPPORT
