@@ -2547,6 +2547,8 @@ ExecuteFunction(int func, char *action, char *action2, char *action3, char *acti
 	int did_playsound = FALSE;
 #endif
 
+	CurrentTwmSubjectWindow = tmp_win;
+
         /* immutables can't be moved - slr - 12252009 */
         if (tmp_win && tmp_win->immutable == TRUE) { 
           /* DoAudible(); */
@@ -5188,6 +5190,10 @@ Identify(TwmWindow * t)
     (void)snprintf(Info[n++], sizeof Info[n], "Class.res_name:  \"%s\"", t->class.res_name);
     (void)snprintf(Info[n++], sizeof Info[n], "Class.res_class:  \"%s\"", t->class.res_class);
     (void)snprintf(Info[n++], sizeof Info[n], "Icon name:  \"%s\"", t->icon_name);
+
+    (void)snprintf(Info[n++], sizeof Info[n], "TwmWindow: %p", t);
+    (void)snprintf(Info[n++], sizeof Info[n], "Window: 0x%lx", t->w);
+
     Info[n++][0] = '\0';
 
 #if 1
