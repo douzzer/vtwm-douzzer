@@ -306,6 +306,11 @@ typedef struct TwmWindow
   int frame_height;		/* height of frame */
   int frame_bw;			/* borderwidth of frame */
 
+  int last_ConfigureNotify_frame_x;
+  int last_ConfigureNotify_frame_y;
+  int last_ConfigureNotify_frame_width;
+  int last_ConfigureNotify_frame_height;
+
   int frame_bw3D;		/* 3D borderwidth of frame */
 
   int title_x;
@@ -526,6 +531,8 @@ extern Bool use_fontset;
 
 extern TwmWindow *Focus;
 extern short FocusRoot;
+
+extern TwmWindow *CurrentTwmSubjectWindow;
 
 extern Atom _XA_MIT_PRIORITY_COLORS;
 extern Atom _XA_WM_CHANGE_STATE;

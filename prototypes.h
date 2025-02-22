@@ -205,6 +205,8 @@ extern void HandleKeyPress(void);
 extern void HandleColormapNotify(void);
 extern void HandleVisibilityNotify(void);
 extern void HandleGraphicsExpose(void);
+extern void HandleCirculateNotify(void);
+extern void HandleConfigureNotify(void);
 extern void HandleUnknown(void);
 extern void SendConfigureNotify(TwmWindow * tmp_win, int x, int y);
 extern void InstallRootColormap(void);
@@ -267,7 +269,6 @@ extern int MatchName(char *name, char *pattern,
 #endif
 		     short type);
 extern void ResizeTwmWindowContents(TwmWindow * tmp_win, int width, int height);
-extern void SetRaiseWindow(TwmWindow * tmp);
 extern void RestartVtwm(Time time);
 extern int parse_keyword(char *s, int *nump);
 extern int do_single_keyword(int keyword);

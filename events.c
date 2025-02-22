@@ -206,6 +206,8 @@ InitEvents(void)
   if (HasXrandr)
     EventHandler[XrandrEventBase + RRScreenChangeNotify] = HandleXrandrScreenChangeNotify;
 #endif
+  EventHandler[CirculateNotify] = HandleCirculateNotify;
+  EventHandler[ConfigureNotify] = HandleConfigureNotify;
 }
 
 
@@ -3618,6 +3620,90 @@ HandleGraphicsExpose(void)
     fprintf(stderr, "%s: HandleGraphicsExpose(): event type unknown.\n", ProgramName);
 }
 
+
+/***********************************************************************
+ *
+ *  Procedure:
+ *	HandleCirculateNotify - raise/lower event handler
+ *
+ ***********************************************************************
+ */
+
+void
+HandleCirculateNotify(void)
+{
+  if (! Tmp_win) {
+    fprintf(stderr, "%s: HandleCirculateNotify(): null Tmp_win (place %d).\n", ProgramName, Event.xcirculate.place);
+    return;
+  }
+  if (! Tmp_win->VirtualDesktopDisplayWindow.win) {
+    fprintf(stderr, "%s: HandleCirculateNotify(): null Tmp_win->VirtualDesktopDisplayWindow.win (place %d).\n", ProgramName, Event.xcirculate.place);
+    return;
+  }
+  if (Event.xcirculate.place == PlaceOnTop)
+  {
+    XRaiseWindow(dpy, Tmp_win->VirtualDesktopDisplayWindow.win);
+  }
+  else if (Event.xcirculate.place == PlaceOnBottom)
+  {
+    XLowerWindow(dpy, Tmp_win->VirtualDesktopDisplayWindow.win);
+  }
+  else
+    fprintf(stderr, "%s: HandleCirculateNotify(): place %d unknown.\n", ProgramName, Event.xcirculate.place);
+}
+
+
+/***********************************************************************
+ *
+ *  Procedure:
+ *	HandleConfigureNotify - a roundabout raise/lower event handler
+ *
+ ***********************************************************************
+ */
+
+void
+HandleConfigureNotify(void)
+{
+  /* the trick here is that when chrome raises a window, first it sends FocusIn
+   * for it, then a ConfigureNotify while it's still focused.
+   */
+  if (! Tmp_win) {
+    return;
+  }
+  if (! Tmp_win->VirtualDesktopDisplayWindow.win) {
+    return;
+  }
+
+  if (Focus == Tmp_win)
+  {
+    /* only react to exogenous events, e.g. chrome, that don't change the geometry, i.e. must be a raise/lower event. */
+    if ((Tmp_win != CurrentTwmSubjectWindow) &&
+
+	(((Tmp_win->last_ConfigureNotify_frame_x == 0) &&
+	  (Tmp_win->last_ConfigureNotify_frame_y == 0) &&
+	  (Tmp_win->last_ConfigureNotify_frame_width == 0) &&
+	  (Tmp_win->last_ConfigureNotify_frame_height == 0)) ||
+
+	 ((Tmp_win->last_ConfigureNotify_frame_x == Event.xconfigure.x) &&
+	  (Tmp_win->last_ConfigureNotify_frame_y == Event.xconfigure.y) &&
+	  (Tmp_win->last_ConfigureNotify_frame_width == Event.xconfigure.width) &&
+	  (Tmp_win->last_ConfigureNotify_frame_height == Event.xconfigure.height)))) {
+
+      XMapRaised(dpy, Tmp_win->VirtualDesktopDisplayWindow.win);
+    }
+  }
+
+  /* once we get the ConfigureNotify, we know vtwm is done working on the
+   * window.
+   */
+  if (Tmp_win == CurrentTwmSubjectWindow)
+    CurrentTwmSubjectWindow = NULL;
+
+  Tmp_win->last_ConfigureNotify_frame_x = Event.xconfigure.x;
+  Tmp_win->last_ConfigureNotify_frame_y = Event.xconfigure.y;
+  Tmp_win->last_ConfigureNotify_frame_width = Event.xconfigure.width;
+  Tmp_win->last_ConfigureNotify_frame_height = Event.xconfigure.height;
+}
 
 
 /***********************************************************************

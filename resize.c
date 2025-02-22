@@ -153,6 +153,8 @@ StartResize(XEvent * evp, TwmWindow * tmp_win, Bool fromtitlebar, int context)
 
   resize_context = context;
 
+  CurrentTwmSubjectWindow = tmp_win;
+
   SetVirtualDesktopIncrs(tmp_win);
 
   if (context == C_VIRTUAL_WIN)
@@ -224,6 +226,8 @@ MenuStartResize(TwmWindow * tmp_win, int x, int y, int w, int h, int context)
 {
   resize_context = context;
 
+  CurrentTwmSubjectWindow = tmp_win;
+
   SetVirtualDesktopIncrs(tmp_win);
 
   if (!tmp_win->opaque_resize)
@@ -283,6 +287,8 @@ void
 AddStartResize(TwmWindow * tmp_win, int x, int y, int w, int h)
 {
   resize_context = C_WINDOW;
+
+  CurrentTwmSubjectWindow = tmp_win;
 
   SetVirtualDesktopIncrs(tmp_win);
 

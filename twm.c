@@ -149,6 +149,8 @@ Bool use_fontset;
 TwmWindow *Focus;		/* the twm window that has focus */
 short FocusRoot;		/* is the input focus on the root ? */
 
+TwmWindow *CurrentTwmSubjectWindow = NULL; /* the twm window that vtwm is currently moving or resizing */
+
 #ifdef TWM_USE_SLOPPYFOCUS
 int SloppyFocus;		/* TRUE if sloppy focus policy globally on all screens activated */
 #endif
