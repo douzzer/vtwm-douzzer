@@ -45,6 +45,7 @@
 #ifdef HAVE_RPLAY
 #include <rplay.h>
 #endif
+#include <arpa/inet.h>
 
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN	256
