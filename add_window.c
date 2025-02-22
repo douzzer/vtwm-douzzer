@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "twm.h"
 #include <X11/Xatom.h>
 #ifndef NO_XPM_SUPPORT
@@ -1213,6 +1214,8 @@ AddMoveAndResize(TwmWindow * tmp_win, int ask_user)
 	Bool doorismapped = False;
 	TwmDoor *door = NULL;
 
+	int grab_tries = 0;
+
 	XFindContext(dpy, tmp_win->w, DoorContext, (caddr_t *) & door);
 
 	/* better wait until all the mouse buttons have been
@@ -1254,8 +1257,10 @@ AddMoveAndResize(TwmWindow * tmp_win, int ask_user)
 	  /*
 	   * wait for buttons to come up; yuck
 	   */
-	  if (JunkMask != 0)
+	  if (JunkMask != 0) {
+	    usleep(1000);
 	    continue;
+	  }
 
 	  /*
 	   * this will cause a warp to the indicated root
@@ -1265,8 +1270,14 @@ AddMoveAndResize(TwmWindow * tmp_win, int ask_user)
 			      PointerMotionMask | PointerMotionHintMask,
 			      GrabModeAsync, GrabModeAsync, Scr->Root, UpperLeftCursor, CurrentTime);
 
-	  if (stat == GrabSuccess)
+	  if ((stat == GrabSuccess) || (grab_tries > 5000))
 	    break;
+	  ++grab_tries;
+	  usleep(1000);
+	  /* https://www.fvwm.org/fvwm-ml/2958.html "retry grabbing the pointer/keyboard after
+	   * a few milliseconds. Fvwm itself always retries this for up to
+	   * five seconds before finally giving up."
+	   */
 	}
 
 	if (Scr->NoGrabServer)
