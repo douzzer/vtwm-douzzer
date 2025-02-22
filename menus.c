@@ -1676,7 +1676,7 @@ PopDownMenu(void)
  */
 
 MenuRoot *
-FindMenuRoot(char *name)
+FindMenuRoot(const char *name)
 {
   MenuRoot *tmp;
 
@@ -4749,7 +4749,7 @@ newsystem(ScreenInfo *scr, const char *command)
 }
 
 void
-Execute(ScreenInfo * scr, char *s)
+Execute(ScreenInfo * scr, const char *s)
 {
   static char buf[256];
   char *ds = DisplayString(dpy);

@@ -13,7 +13,7 @@ endif
 rcdir = ${datadir}/X11/vtwm
 dist_rc_DATA = system.vtwmrc
 
-pre_vtwm_CFLAGS = $(VWM_CFLAGS) -D_BSD_SOURCE -fno-strict-aliasing
+pre_vtwm_CFLAGS = $(VWM_CFLAGS) -D_DEFAULT_SOURCE -fno-strict-aliasing
 pre_vtwm_CFLAGS += -DSYSTEM_VTWMRC=\"${rcdir}/system.vtwmrc\" -DSYSTEM_TWMRC=\"${rcdir}/system.twmrc\"
 pre_vtwm_CFLAGS += @SOUND_SUPPORT@ @xpm_CFLAGS@ @regex_CFLAGS@ @xft_CFLAGS@ @xft_AUX_CFLAGS@ @xrandr_CFLAGS@ @xrandr_AUX_CFLAGS@
 pre_vtwm_CFLAGS += @TWM_USE_SPACING@ @TWM_USE_OPACITY@ @TWM_USE_SLOPPYFOCUS@ @xinerama_CFLAGS@ @xinerama_AUX_CFLAGS@
@@ -113,8 +113,6 @@ lastmake.c: FORCE
 	echo '    "Platform:  '`uname -r -s`'",' >>$@
 	echo '    "Build:  '`date`'",' >>$@
 	echo '    "" };' >>$@
-
-gram.h: gram.c
 
 gram.h gram.c: gram.y
 

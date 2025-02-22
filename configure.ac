@@ -1,12 +1,12 @@
 dnl Process this file with autoconf to create configure.
 
-AC_PREREQ([2.57])
-AC_INIT(vtwm,[5.5.0], [mailto:vtwm-hackers@lists.sandelman.ca],vtwm)
+AC_PREREQ([2.72])
+AC_INIT([vtwm],[6.0.0],[mailto:douzzer@mega.nu],[vtwm])
 AM_INIT_AUTOMAKE([dist-bzip2])
 AM_MAINTAINER_MODE
 AC_PREFIX_DEFAULT([/usr])
 
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h:config.in])
 
 AC_PATH_PROG(BOURNE_SHELL, sh)
 AC_PATH_PROG(LN, ln)
@@ -20,6 +20,8 @@ if test "x$LEX" = x:; then
   echo "Missing required program lex (or flex)!"
   exit 1
 fi
+
+AM_SILENT_RULES([yes])
 
 AC_CHECK_FUNC([mkstemp],
    AC_DEFINE(HAS_MKSTEMP,1,[Define to 1 if you have the `mkstemp' function.]))
@@ -42,35 +44,35 @@ if test "$cross_compiling" = no; then
   AC_FUNC_SETPGRP
 else
   AC_CACHE_CHECK([whether setpgrp takes no argument], ac_cv_func_setpgrp_void,
-    [AC_TRY_COMPILE([
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <unistd.h>
-], [
+]], [[
   if (setpgrp(1,1) == -1)
     exit (0);
   else
     exit (1);
-], ac_cv_func_setpgrp_void=no, ac_cv_func_setpgrp_void=yes)])
+]])],[ac_cv_func_setpgrp_void=no],[ac_cv_func_setpgrp_void=yes])])
 if test $ac_cv_func_setpgrp_void = yes; then
   AC_DEFINE(SETPGRP_VOID, 1)
 fi
 fi
 
 dnl Check for sound support
-AC_ARG_ENABLE(sound,AC_HELP_STRING([--disable-sound],[Turn off sound support]),[if test "$enable_sound" = "no"; then SOUND_SUPPORT=; fi ])
+AC_ARG_ENABLE(sound,AS_HELP_STRING([--disable-sound],[Turn off sound support]),[if test "$enable_sound" = "no"; then SOUND_SUPPORT=; fi ])
 if test "x$enable_sound" != "xno"; then
 
-  AC_ARG_ENABLE(oss-sound,AC_HELP_STRING([--disable-oss-sound],[Turn off oss sound support]))
+  AC_ARG_ENABLE(oss-sound,AS_HELP_STRING([--disable-oss-sound],[Turn off oss sound support]))
   if test "x$enable_oss_sound" != "xno"; then
     AC_CHECK_FILE(/dev/dsp,SOUND_SUPPORT=-DHAVE_OSS)
   fi
 
-  AC_ARG_ENABLE(rplay-sound,AC_HELP_STRING([--disable-rplay-sound],[Turn off rplay sound support]))
+  AC_ARG_ENABLE(rplay-sound,AS_HELP_STRING([--disable-rplay-sound],[Turn off rplay sound support]))
   if test "x$enable_rplay_sound" != "xno"; then
     AC_CHECK_LIB(rplay,rplay_create)
     AC_CHECK_LIB(rplay,rplay_create,SOUND_SUPPORT="${SOUND_SUPPORT} -DHAVE_RPLAY")
   fi
 
-  AC_ARG_ENABLE(esd-sound,AC_HELP_STRING([--disable-esd-sound],[Turn off esd sound support]))
+  AC_ARG_ENABLE(esd-sound,AS_HELP_STRING([--disable-esd-sound],[Turn off esd sound support]))
   if test "x$enable_esd_sound" != "xno"; then
     AC_CHECK_LIB(esd,esd_audio_open)
     AC_CHECK_LIB(esd,esd_audio_open,SOUND_SUPPORT="${SOUND_SUPPORT} -DHAVE_ESD")
@@ -82,14 +84,14 @@ dnl Checks for pkg-config packages
 PKG_CHECK_MODULES(VTWM, x11 xext xt xmu)
 
 dnl Xpm library checks
-AC_ARG_ENABLE(xpm,AC_HELP_STRING([--disable-xpm],[Turn off libXpm rendering]))
+AC_ARG_ENABLE(xpm,AS_HELP_STRING([--disable-xpm],[Turn off libXpm rendering]))
 if test "x$enable_xpm" != "xno"; then
   PKG_CHECK_EXISTS(xpm,[PKG_CHECK_MODULES(xpm, xpm)],[xpm_CFLAGS=-DNO_XPM_SUPPORT])
   AC_SUBST(xpm_CFLAGS)
   AC_SUBST(xpm_LIBS)
 fi
 
-AC_ARG_ENABLE(nexpm,AC_HELP_STRING([--disable-nexpm],[Turn off nexpm building]))
+AC_ARG_ENABLE(nexpm,AS_HELP_STRING([--disable-nexpm],[Turn off nexpm building]))
 if test "x$enable_xpm" != "xno" -a "x$enable_nexpm" != "xno"; then
   ENABLE_NEXPM=yes;
 fi
@@ -97,7 +99,7 @@ AC_SUBST(ENABLE_NEXPM)
 AM_CONDITIONAL(ENABLE_NEXPM, test x$ENABLE_NEXPM = xyes)
 
 dnl png library checks
-AC_ARG_ENABLE(png,AC_HELP_STRING([--disable-png],[Turn off png support]))
+AC_ARG_ENABLE(png,AS_HELP_STRING([--disable-png],[Turn off png support]))
 if test "x$enable_png" != "xno"; then
   PKG_CHECK_EXISTS(libpng,[PKG_CHECK_MODULES(png, libpng)],[png_CFLAGS=-DNO_PNG_SUPPORT])
   AC_SUBST(png_CFLAGS)
@@ -110,7 +112,7 @@ AC_SUBST(regex_CFLAGS)
 AC_SUBST(regex_LIBS)
 
 dnl Xft Font rendering
-AC_ARG_ENABLE(xft,AC_HELP_STRING([--disable-xft],[Turn off libXft rendering]))
+AC_ARG_ENABLE(xft,AS_HELP_STRING([--disable-xft],[Turn off libXft rendering]))
 if test "x$enable_xft" != "xno"; then
   PKG_CHECK_EXISTS(xft,[PKG_CHECK_MODULES(xft, xft);xft_AUX_CFLAGS=-DTWM_USE_XFT])
   AC_SUBST(xft_CFLAGS)
@@ -119,26 +121,26 @@ if test "x$enable_xft" != "xno"; then
 fi
 
 dnl Font height dependent text layout spacing
-AC_ARG_ENABLE(spacing,AC_HELP_STRING([--disable-spacing],[Turn off font height dependent text layout spacing]),[if test "$enable_spacing" = "yes"; then TWM_USE_SPACING=-DTWM_USE_SPACING; fi ],[TWM_USE_SPACING=-DTWM_USE_SPACING])
+AC_ARG_ENABLE(spacing,AS_HELP_STRING([--disable-spacing],[Turn off font height dependent text layout spacing]),[if test "$enable_spacing" = "yes"; then TWM_USE_SPACING=-DTWM_USE_SPACING; fi ],[TWM_USE_SPACING=-DTWM_USE_SPACING])
 AC_SUBST(TWM_USE_SPACING)
 
 dnl Opacity
-AC_ARG_ENABLE(opacity,AC_HELP_STRING([--disable-opacity],[Turn off _NET_WM_WINDOW_OPACITY client window property support]),[if test "$enable_opacity" = "yes"; then TWM_USE_OPACITY=-DTWM_USE_OPACITY; fi ],[TWM_USE_OPACITY=-DTWM_USE_OPACITY])
+AC_ARG_ENABLE(opacity,AS_HELP_STRING([--disable-opacity],[Turn off _NET_WM_WINDOW_OPACITY client window property support]),[if test "$enable_opacity" = "yes"; then TWM_USE_OPACITY=-DTWM_USE_OPACITY; fi ],[TWM_USE_OPACITY=-DTWM_USE_OPACITY])
 AC_SUBST(TWM_USE_OPACITY)
 
 dnl Sloppy focus
-AC_ARG_ENABLE(sloppyfocus,AC_HELP_STRING([--disable-sloppyfocus],[Turn off sloppy window focus]),[if test "$enable_sloppyfocus" = "yes"; then TWM_USE_SLOPPYFOCUS=-DTWM_USE_SLOPPYFOCUS; fi ],[TWM_USE_SLOPPYFOCUS=-DTWM_USE_SLOPPYFOCUS])
+AC_ARG_ENABLE(sloppyfocus,AS_HELP_STRING([--disable-sloppyfocus],[Turn off sloppy window focus]),[if test "$enable_sloppyfocus" = "yes"; then TWM_USE_SLOPPYFOCUS=-DTWM_USE_SLOPPYFOCUS; fi ],[TWM_USE_SLOPPYFOCUS=-DTWM_USE_SLOPPYFOCUS])
 AC_SUBST(TWM_USE_SLOPPYFOCUS)
 
 dnl Version window build information
-AC_ARG_ENABLE(buildinfo,AC_HELP_STRING([--disable-build-info],[Prevent version window from having build information]),[if test "$enable_build_info" = "no"; then NO_BUILD_INFO=-DNO_BUILD_INFO; fi ])
+AC_ARG_ENABLE(buildinfo,AS_HELP_STRING([--disable-build-info],[Prevent version window from having build information]),[if test "$enable_build_info" = "no"; then NO_BUILD_INFO=-DNO_BUILD_INFO; fi ])
 AC_SUBST(NO_BUILD_INFO)
 
 dnl nsl library checks
 AC_SEARCH_LIBS(gethostbyname,nsl)
 
 dnl xrandr library checks
-AC_ARG_ENABLE(xrandr,AC_HELP_STRING([--disable-xrandr],[Turn off Xrandr support]))
+AC_ARG_ENABLE(xrandr,AS_HELP_STRING([--disable-xrandr],[Turn off Xrandr support]))
 if test "x$enable_xrandr" != "xno"; then
   PKG_CHECK_EXISTS(xrandr,[PKG_CHECK_MODULES(xrandr, xrandr);xrandr_AUX_CFLAGS=-DTWM_USE_XRANDR])
   AC_SUBST(xrandr_CFLAGS)
@@ -147,7 +149,7 @@ if test "x$enable_xrandr" != "xno"; then
 fi
 
 dnl xinerama library checks
-AC_ARG_ENABLE(xinerama,AC_HELP_STRING([--disable-xinerama],[Turn off Xinerama support]))
+AC_ARG_ENABLE(xinerama,AS_HELP_STRING([--disable-xinerama],[Turn off Xinerama support]))
 if test "x$enable_xinerama" != "xno"; then
   PKG_CHECK_EXISTS(xinerama,[PKG_CHECK_MODULES(xinerama, xinerama);xinerama_AUX_CFLAGS=-DTWM_USE_XINERAMA])
   AC_SUBST(xinerama_CFLAGS)
@@ -164,25 +166,26 @@ AC_CHECK_FUNC(putenv,,NEED_PUTENV_F=-DNEED_PUTENV_F)
 AC_SUBST(NEED_PUTENV_F)
 
 dnl M4
-AC_ARG_ENABLE(m4,AC_HELP_STRING([--disable-m4],[Turn off m4 vtwmrc processing]),[if test "$enable_m4" = "no"; then NO_M4_SUPPORT=-DNO_M4_SUPPORT; fi ])
+AC_ARG_ENABLE(m4,AS_HELP_STRING([--disable-m4],[Turn off m4 vtwmrc processing]),[if test "$enable_m4" = "no"; then NO_M4_SUPPORT=-DNO_M4_SUPPORT; fi ])
 AC_PATH_PROG(M4_BIN, m4)
 if test -z "$M4_BIN"; then NO_M4_SUPPORT=-DNO_M4_SUPPORT; fi
 AC_SUBST(NO_M4_SUPPORT)
 
 dnl DEBUG
-AC_ARG_ENABLE(debug,AC_HELP_STRING([--enable-debug],[Turn on value added debugging]),[if test "$enable_debug" = "yes"; then DDEBUG=-DDEBUG; fi ])
-AC_ARG_ENABLE(debug-events,AC_HELP_STRING([--enable-debug-events],[Turn on value added debugging of events]),[if test "$enable_debug_events" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_EVENTS"; fi ])
-AC_ARG_ENABLE(debug-autoraisedelay,AC_HELP_STRING([--enable-debug-autoraisedelay],[Turn on value added debugging]),[if test "$enable_debug_autoraisedelay" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_AUTORAISEDELAY"; fi ])
-AC_ARG_ENABLE(debug-stolenfocus,AC_HELP_STRING([--enable-debug-stolenfocus],[Turn on value added debugging]),[if test "$enable_debug_stolenfocus" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_STOLENFOCUS"; fi ])
-AC_ARG_ENABLE(debug-iconmgr,AC_HELP_STRING([--enable-debug-iconmgr],[Turn on value added debugging]),[if test "$enable_debug_iconmgr" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_ICONMGR"; fi ])
-AC_ARG_ENABLE(debug-warpclass,AC_HELP_STRING([--enable-debug-warpclass],[Turn on value added debugging]),[if test "$enable_debug_warpclass" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_WARPCLASS"; fi ])
-AC_ARG_ENABLE(debug-trace,AC_HELP_STRING([--enable-debug-trace],[Turn on value added X event tracing]),[if test "$enable_debug_trace" = "yes"; then DDEBUG="$DDEBUG -DTRACE"; fi ])
+AC_ARG_ENABLE(debug,AS_HELP_STRING([--enable-debug],[Turn on value added debugging]),[if test "$enable_debug" = "yes"; then DDEBUG=-DDEBUG; fi ])
+AC_ARG_ENABLE(debug-events,AS_HELP_STRING([--enable-debug-events],[Turn on value added debugging of events]),[if test "$enable_debug_events" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_EVENTS"; fi ])
+AC_ARG_ENABLE(debug-autoraisedelay,AS_HELP_STRING([--enable-debug-autoraisedelay],[Turn on value added debugging]),[if test "$enable_debug_autoraisedelay" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_AUTORAISEDELAY"; fi ])
+AC_ARG_ENABLE(debug-stolenfocus,AS_HELP_STRING([--enable-debug-stolenfocus],[Turn on value added debugging]),[if test "$enable_debug_stolenfocus" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_STOLENFOCUS"; fi ])
+AC_ARG_ENABLE(debug-iconmgr,AS_HELP_STRING([--enable-debug-iconmgr],[Turn on value added debugging]),[if test "$enable_debug_iconmgr" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_ICONMGR"; fi ])
+AC_ARG_ENABLE(debug-warpclass,AS_HELP_STRING([--enable-debug-warpclass],[Turn on value added debugging]),[if test "$enable_debug_warpclass" = "yes"; then DDEBUG="$DDEBUG -DDEBUG_WARPCLASS"; fi ])
+AC_ARG_ENABLE(debug-trace,AS_HELP_STRING([--enable-debug-trace],[Turn on value added X event tracing]),[if test "$enable_debug_trace" = "yes"; then DDEBUG="$DDEBUG -DTRACE"; fi ])
 AC_SUBST(DDEBUG)
 
 AC_SUBST(VTWM_CFLAGS)
 AC_SUBST(VTWM_LIBS)
 
-AC_ARG_WITH([SYS_VTWMRC_LOOK], AC_HELP_STRING([--disable-3dlook],['2D' or '3D' (3D default) look and feel]), [SYS_VTWMRC_LOOK=$withval],[SYS_VTWMRC_LOOK=3D])
+AC_ARG_WITH([SYS_VTWMRC_LOOK], AS_HELP_STRING([--disable-3dlook],['2D' or '3D' (3D default) look and feel]), [SYS_VTWMRC_LOOK=$withval],[SYS_VTWMRC_LOOK=3D])
 AC_SUBST(SYS_VTWMRC_LOOK)
 
-AC_OUTPUT([Makefile])
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
